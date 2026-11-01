@@ -1,3 +1,4 @@
+import { actor } from "./access-context";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
 
@@ -30,6 +31,10 @@ export const taskInclude = {
 } satisfies Prisma.TaskInclude;
 
 export type TaskWithRelations = Prisma.TaskGetPayload<{ include: typeof taskInclude }>;
+export function visibleTask<T extends {subtasks: {id:string}[];_count:{subtasks:number}}>(task:T):T {
+  const a=actor();
+  return {...task,subtasks:task.subtasks.filter(t=>a.access.can("TASK",t.id)),_count:{...task._count,subtasks:task.subtasks.filter(t=>a.access.can("TASK",t.id)).length}};
+}
 export type SubtaskWithRelations = TaskWithRelations["subtasks"][number];
 export type UserLite = Prisma.UserGetPayload<{ select: typeof userSelect }>;
 
@@ -63,6 +68,11 @@ export async function getWorkspaceTree() {
       },
     },
   });
+  if (!workspace) return workspace;
+  const a = actor();
+  const visibleList = (l: (typeof workspace.spaces)[number]["lists"][number]) => { l._count.tasks = a.access.resources("TASK").filter(t=>t.listId===l.id&&a.access.can("TASK",t.id)).length; return a.access.visibleList(l.id); };
+  workspace.spaces = workspace.spaces.map(s=>({...s,lists:s.lists.filter(visibleList),folders:s.folders.map(f=>({...f,lists:f.lists.filter(visibleList)})).filter(f=>f.lists.length>0)})).filter(s=>a.access.can("SPACE",s.id)||s.lists.length>0||s.folders.length>0);
+  if (!a.access.admin) workspace.members = workspace.members.filter(m=>m.userId===a.user.id);
   return workspace;
 }
 
@@ -76,6 +86,8 @@ export type ListNode = SpaceNode["lists"][number];
 // ----------------------------------------------------------------------------
 
 export async function getListData(listId: string) {
+  const a = actor();
+  if (!a.access.visibleList(listId)) return null;
   const list = await prisma.list.findUnique({
     where: { id: listId },
     include: {
@@ -91,22 +103,38 @@ export async function getListData(listId: string) {
   });
   if (!list) return null;
 
-  const tasks = await prisma.task.findMany({
-    where: { listId, parentId: null, archived: false },
-    orderBy: { position: "asc" },
-    include: taskInclude,
-  });
+  // D1 limits bound parameters. Prisma expands relation includes into IN
+  // queries, so load bounded pages without truncating the user's list.
+  const tasks: TaskWithRelations[] = [];
+  const pageSize = 20;
+  for (let skip = 0; ; skip += pageSize) {
+    const page = await prisma.task.findMany({
+      where: { listId, parentId: null, archived: false },
+      orderBy: [{ position: "asc" }, { id: "asc" }],
+      skip,
+      take: pageSize,
+      include: taskInclude,
+    });
+    tasks.push(...page.filter(t=>a.access.can("TASK",t.id)).map(t=>({...t,subtasks:t.subtasks.filter(st=>a.access.can("TASK",st.id)),_count:{...t._count,subtasks:t.subtasks.filter(st=>a.access.can("TASK",st.id)).length}})));
+    if (page.length < pageSize) break;
+  }
 
   // dependency edges between visible tasks (for Gantt arrows)
   const taskIds = tasks.map((t) => t.id);
   const dependencies = taskIds.length
     ? await prisma.taskDependency.findMany({
-        where: { blockerId: { in: taskIds }, blockedId: { in: taskIds } },
+        where: {
+          blocker: { listId, parentId: null, archived: false },
+          blocked: { listId, parentId: null, archived: false },
+        },
         select: { id: true, blockerId: true, blockedId: true },
       })
     : [];
 
-  return { list, tasks, dependencies };
+  // A directly shared subtask is discoverable even if its parent is private.
+  const shared = a.access.resources("TASK").filter(t=>t.listId===listId&&a.access.can("TASK",t.id)&&t.parentType==="TASK"&&!a.access.can("TASK",t.parentId!));
+  for (const node of shared) { const task=await prisma.task.findUnique({where:{id:node.id},include:taskInclude});if(task&&!task.archived)tasks.push({...task,subtasks:task.subtasks.filter(st=>a.access.can("TASK",st.id)),_count:{...task._count,subtasks:task.subtasks.filter(st=>a.access.can("TASK",st.id)).length}}); }
+  return { list, tasks, dependencies:dependencies.filter(d=>a.access.can("TASK",d.blockerId)&&a.access.can("TASK",d.blockedId)) };
 }
 
 export type ListData = NonNullable<Awaited<ReturnType<typeof getListData>>>;
@@ -119,7 +147,8 @@ export type CustomFieldWithOptions = ListWithMeta["customFields"][number];
 // ----------------------------------------------------------------------------
 
 export async function getTaskDetail(taskId: string) {
-  return prisma.task.findUnique({
+  const a=actor(); a.access.assert("TASK",taskId);
+  const task = await prisma.task.findUnique({
     where: { id: taskId },
     include: {
       ...taskInclude,
@@ -174,6 +203,14 @@ export async function getTaskDetail(taskId: string) {
       },
     },
   });
+  if (!task) return null;
+  task.subtasks=task.subtasks.filter(t=>a.access.can("TASK",t.id));
+  task._count.subtasks=task.subtasks.length;
+  task.blockedBy=task.blockedBy.filter(d=>a.access.can("TASK",d.blockerId));
+  task.blocking=task.blocking.filter(d=>a.access.can("TASK",d.blockedId));
+  // Imported activity payloads may contain cross-resource names.
+  if(!a.access.admin) task.activities=[];
+  return task;
 }
 
 export type TaskDetail = NonNullable<Awaited<ReturnType<typeof getTaskDetail>>>;

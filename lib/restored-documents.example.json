@@ -1,0 +1,12 @@
+[
+  {
+    "pages": [
+      {
+        "id": "example",
+        "name": "No documents imported",
+        "doc_id": "example",
+        "content": "Import your own authorized backup to see its documents."
+      }
+    ]
+  }
+]

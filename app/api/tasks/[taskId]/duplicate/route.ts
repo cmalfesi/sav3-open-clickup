@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
-import { taskInclude } from "@/lib/queries";
+import { taskInclude, visibleTask } from "@/lib/queries";
 import { ApiError, route } from "@/lib/api-helpers";
 import { publish } from "@/lib/events";
 
@@ -58,5 +58,5 @@ export const POST = route(async (_req, { params }: Ctx) => {
   });
 
   publish({ type: "list", listId: src.listId });
-  return NextResponse.json(copy, { status: 201 });
+  return NextResponse.json(visibleTask(copy), { status: 201 });
 });

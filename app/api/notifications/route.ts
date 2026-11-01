@@ -1,3 +1,4 @@
+import { actor } from "@/lib/access-context";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
@@ -18,5 +19,6 @@ export const GET = route(async () => {
     }),
     prisma.notification.count({ where: { userId: user.id, read: false } }),
   ]);
-  return NextResponse.json({ notifications, unread });
+  const visible=notifications.filter(n=>!n.task||actor().access.can("TASK",n.task.id));
+  return NextResponse.json({ notifications:visible, unread:actor().access.admin?unread:visible.filter(n=>!n.read).length });
 });

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useSiteRouter as useRouter } from "@/lib/site-navigation";
 import {
   List as ListIcon,
   Kanban,

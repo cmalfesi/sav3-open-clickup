@@ -42,3 +42,7 @@ Workspace → Space → Folder? → List → Task → Subtask(parentId). Per-Lis
 - **tiptap**: needs `immediatelyRender: false` for Next SSR (see `components/ui/rich-editor.tsx`).
 - **Styling**: ClickUp design tokens are CSS vars in `app/globals.css` (`--cu-*`) exposed as Tailwind colors (`cu-purple`, `cu-sidebar`, etc.). Rich text uses the `.rich` class.
 - Route handler params are async: `{ params }: { params: Promise<{ id: string }> }` then `await params`.
+
+## Sites fork
+
+See docs/decisions/0008-sites-lab.md. This fork uses workerd Prisma output and D1 rather than the upstream pg adapter. Build through `pnpm build` to regenerate the client before Vinext. Drizzle owns schema-only migrations; restore data stays in the private server seed plan.

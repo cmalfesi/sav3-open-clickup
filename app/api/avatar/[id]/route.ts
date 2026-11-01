@@ -1,0 +1,2 @@
+import {env} from 'cloudflare:workers';import {requireUser} from '@/lib/auth';import {route,ApiError} from '@/lib/api-helpers';
+export const GET=route(async(_req,{params}:{params:Promise<{id:string}>})=>{await requireUser();const{id}=await params;const f=await env.BUCKET?.get('avatar_'+id);if(!f)throw new ApiError(404,'Not found');return new Response(f.body,{headers:{'Content-Type':f.httpMetadata?.contentType||'application/octet-stream','X-Content-Type-Options':'nosniff'}})});

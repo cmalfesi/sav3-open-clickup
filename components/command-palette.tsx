@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { useRouter } from "next/navigation";
+import { useSiteRouter as useRouter } from "@/lib/site-navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Search, List as ListIcon, CornerDownLeft } from "lucide-react";
 import { apiGet } from "@/lib/api";

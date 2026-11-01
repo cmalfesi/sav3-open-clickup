@@ -1,0 +1,2 @@
+import documents from '@/lib/restored-documents.json';
+export default function DocumentsPage(){return <main className="overflow-auto p-8"><h1 className="text-2xl font-semibold">Documentos recuperados</h1>{documents.flatMap(d=>d.pages).map(p=><article key={p.id} className="mt-6 rounded-lg border border-cu-border bg-cu-panel p-6"><h2 className="text-xl font-semibold">{p.name}</h2><p className="text-xs text-cu-text-secondary">{p.doc_id} · consulta del respaldo</p><pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-7">{p.content}</pre></article>)}</main>}

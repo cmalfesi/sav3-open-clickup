@@ -1,3 +1,4 @@
+import { actor } from "./access-context";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { ApiError } from "@/lib/api-helpers";
@@ -21,9 +22,9 @@ export async function getMembership(userId: string) {
  */
 export async function requireRole(min: Role) {
   const user = await requireUser();
-  const membership = await getMembership(user.id);
-  if (!membership || ROLE_RANK[membership.role as Role] < ROLE_RANK[min]) {
+  const current = actor();
+  if (ROLE_RANK[current.role] < ROLE_RANK[min]) {
     throw new ApiError(403, `This action requires ${min.toLowerCase()} access.`);
   }
-  return { user, role: membership.role as Role, workspaceId: membership.workspaceId };
+  return { user, role: current.role, workspaceId: current.workspaceId };
 }

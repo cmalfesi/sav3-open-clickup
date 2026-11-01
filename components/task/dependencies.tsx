@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useSiteRouter as useRouter } from "@/lib/site-navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Popover from "@radix-ui/react-popover";
 import { Link2, Plus, X, Search } from "lucide-react";

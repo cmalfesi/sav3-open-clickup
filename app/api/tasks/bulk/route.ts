@@ -49,9 +49,8 @@ export const POST = route(async (req) => {
       prisma.taskAssignee.deleteMany({ where: { taskId: { in: ids } } }),
       prisma.taskAssignee.createMany({
         data: ids.flatMap((taskId) =>
-          patch.assigneeIds!.map((userId) => ({ taskId, userId })),
+          [...new Set(patch.assigneeIds!)].map((userId) => ({ taskId, userId })),
         ),
-        skipDuplicates: true,
       }),
     ]);
   }

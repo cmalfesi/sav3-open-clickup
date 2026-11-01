@@ -1,3 +1,4 @@
+import { actor } from "@/lib/access-context";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getWorkspaceTree } from "@/lib/queries";
@@ -24,5 +25,5 @@ export const GET = route(async () => {
     color: user.color,
     avatarUrl: user.avatarUrl,
   };
-  return NextResponse.json({ currentUser, workspace, favorites: favorites.map((f) => f.listId) });
+  return NextResponse.json({ currentUser, workspace, authorization:{role:actor().role,admin:actor().access.admin}, favorites: favorites.filter(f=>actor().access.visibleList(f.listId)).map((f) => f.listId) });
 });

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { Priority, Prisma } from "@/lib/generated/prisma/client";
-import { taskInclude } from "@/lib/queries";
+import { taskInclude, visibleTask } from "@/lib/queries";
 import { publish } from "@/lib/events";
 import { createNotifications } from "@/lib/notifications";
 import { nextOccurrence, type Recurrence } from "@/lib/recurrence";
@@ -53,7 +53,7 @@ export async function createTask(input: {
   });
 
   publish({ type: "list", listId: input.listId });
-  return task;
+  return visibleTask(task);
 }
 
 export type TaskPatch = {
@@ -184,7 +184,7 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
       body: "assigned you a task",
     });
   }
-  return task;
+  return visibleTask(task);
 }
 
 type RecurringSource = {
