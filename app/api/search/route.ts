@@ -1,3 +1,4 @@
+import { actor } from "@/lib/access-context";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
@@ -7,7 +8,7 @@ export async function GET(req: NextRequest) {
 
   const [tasks, lists] = await Promise.all([
     prisma.task.findMany({
-      where: { name: { contains: q, mode: "insensitive" }, archived: false },
+      where: { name: { contains: q }, archived: false },
       take: 12,
       orderBy: { updatedAt: "desc" },
       select: {
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
       },
     }),
     prisma.list.findMany({
-      where: { name: { contains: q, mode: "insensitive" } },
+      where: { name: { contains: q } },
       take: 6,
       select: {
         id: true,
@@ -30,5 +31,5 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
-  return NextResponse.json({ tasks, lists });
+  return NextResponse.json({ tasks:tasks.filter(t=>actor().access.can("TASK",t.id)), lists:lists.filter(l=>actor().access.visibleList(l.id)) });
 }

@@ -1,3 +1,4 @@
+import { actor } from "@/lib/access-context";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
@@ -20,5 +21,5 @@ export const GET = route(async () => {
       list: { select: { name: true, space: { select: { name: true, color: true } } } },
     },
   });
-  return NextResponse.json({ tasks });
+  return NextResponse.json({ tasks:tasks.filter(t=>actor().access.can("TASK",t.id)) });
 });

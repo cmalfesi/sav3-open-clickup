@@ -58,3 +58,29 @@ next-env.d.ts
 # user uploads
 /public/uploads/*
 !/public/uploads/.gitkeep
+
+# Private user data
+/public/restored-files/
+/IMPORT_REPORT.json
+/clickup_backup*/
+/*Backup*.zip
+/.local-backups/
+
+/lib/restore-plan.json
+/lib/restored-documents.json
+
+/lib/generated/
+
+# Build output and checkout-local state
+/dist/
+/.vinext/
+/.wrangler/
+/.sites-runtime/
+.dev.vars*
+/.npmrc
+/work/
+/outputs/
+
+# Python import tooling
+__pycache__/
+*.pyc

@@ -1,3 +1,66 @@
+# SAV3 · Open ClickUp — código de producción v5
+
+Esta copia exporta el código de la versión 5 publicada en Sites, commit
+`8cd19b0c06c119c25e6d6c67478eb1b66bc072fe`, sobre el upstream
+`goshops-com/open-clickup` (`fd92240fbcec674afed5096b61f9414d16d1b653`).
+
+Incluye ingreso por contraseña, invitaciones, roles, Settings, permisos por
+recurso, dashboards básicos, navegación corregida y adaptación a D1/R2.
+El envío de invitaciones por correo sigue siendo manual.
+
+## Código y datos
+
+El código de la aplicación coincide con ese commit de producción. Los datos
+privados del backup, documentos, adjuntos y la identidad del despliegue no forman
+parte de este repositorio público. No se ha migrado la base de datos de producción.
+`PRODUCTION_SOURCE.json` registra qué archivos coinciden con producción y qué
+archivos se excluyeron o adaptaron para distribuir el código.
+
+La rama `main` de tu GitHub no cambia hasta que subas esta rama y la integres.
+No mezcles el historial privado de Sites: contiene datos del respaldo.
+
+## Abrir en VS Code
+
+Desde una copia del repositorio, abrí la carpeta raíz (la que contiene
+`package.json`). No necesitás instalar dependencias para leer o editar archivos.
+Para compilar, usá Node 22.13+ y la versión de pnpm fijada en `package.json`:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm prepare:data
+pnpm prisma:generate
+pnpm exec tsc --noEmit
+pnpm test
+pnpm build
+```
+
+Los ejemplos contienen datos sintéticos. Para iniciar una instancia utilizable
+hace falta inicializar D1 y sus cuentas; el build por sí solo no crea usuarios,
+contraseñas ni recupera la base de producción. El acceso del propietario en
+producción sigue vinculado a Sites. No hay una contraseña predeterminada.
+
+## Importar un respaldo autorizado
+
+Mantené el respaldo extraído fuera del checkout:
+
+```bash
+python3 scripts/import-clickup-backup.py --backup /ruta/absoluta/al/respaldo --project "$PWD"
+```
+
+Ese comando escribe archivos locales privados ignorados por Git. No cambia el
+esquema: aplicá siempre las migraciones Drizzle comprometidas antes de restaurar
+los datos. No uses `git add -f` para incorporar los archivos del respaldo.
+
+## Publicación
+
+Esta entrega sincroniza código, sin volver a desplegar ni cambiar producción.
+Un despliegue posterior requiere configurar el Site de destino y sus bindings.
+No subas credenciales a Git. La publicación no importa automáticamente datos,
+usuarios activos, contraseñas ni sesiones desde otra instancia.
+
+## Upstream documentation
+
+
 <div align="center">
 
 # Open ClickUp

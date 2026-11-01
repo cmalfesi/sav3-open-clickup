@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { useParams, usePathname, useRouter } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
+import { useSiteRouter as useRouter } from "@/lib/site-navigation";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   ChevronRight,
@@ -36,7 +36,7 @@ import type { SpaceNode, FolderNode, ListNode } from "@/lib/queries";
 import { Avatar } from "@/components/ui/avatar";
 
 export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
-  const { workspace, favorites } = useWorkspace();
+  const { workspace, favorites, authorization } = useWorkspace();
   const { createSpace } = useHierarchy();
   const [creatingSpace, setCreatingSpace] = useState(false);
   const router = useRouter();
@@ -90,7 +90,7 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
           onClick={() => router.push("/home")}
         />
         <InboxButton />
-        <NavItem icon={<LayoutGrid className="h-4 w-4" />} label="Dashboards" />
+        <NavItem icon={<LayoutGrid className="h-4 w-4" />} label="Dashboards" onClick={() => router.push("/dashboards")} />
       </nav>
 
       {favLists.length > 0 && (
@@ -116,13 +116,13 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
       {/* Spaces */}
       <div className="flex items-center justify-between px-4 pb-1">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-cu-text-tertiary">Spaces</span>
-        <button
+        {authorization.admin&&<button
           onClick={() => setCreatingSpace(true)}
           className="rounded p-0.5 text-cu-text-tertiary hover:bg-cu-hover-strong hover:text-cu-text"
           title="New Space"
         >
           <Plus className="h-3.5 w-3.5" />
-        </button>
+        </button>}
       </div>
 
       <div className="no-scrollbar flex-1 overflow-y-auto px-2 pb-3">
@@ -150,7 +150,7 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
           <button className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover-strong hover:text-cu-text">
             <Bell className="h-4 w-4" />
           </button>
-          <button className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover-strong hover:text-cu-text">
+          <button aria-label="Configuración" title="Configuración" onClick={() => router.push("/settings")} className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover-strong hover:text-cu-text">
             <Settings className="h-4 w-4" />
           </button>
         </div>
@@ -190,21 +190,9 @@ function NavItem({
 }
 
 function UserSwitcher() {
-  const { workspace, currentUser } = useWorkspace();
-  const qc = useQueryClient();
-  const members = workspace.members.map((m) => m.user);
+  const { currentUser } = useWorkspace();
   const [profileOpen, setProfileOpen] = useState(false);
-
-  async function switchTo(userId: string) {
-    if (userId === currentUser.id) return;
-    await apiSend("/api/me", "POST", { userId });
-    qc.invalidateQueries();
-  }
-
-  async function logout() {
-    await apiSend("/api/auth/logout", "POST");
-    window.location.href = "/login";
-  }
+  async function logout() { const r=await apiSend<{redirectTo:string}>("/api/auth/logout","POST",{}); window.location.href=r.redirectTo; }
 
   return (
     <DropdownMenu.Root>
@@ -221,20 +209,7 @@ function UserSwitcher() {
           sideOffset={6}
           className="z-50 min-w-[220px] rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg"
         >
-          <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-cu-text-tertiary">
-            Switch user
-          </div>
-          {members.map((u) => (
-            <DropdownMenu.Item
-              key={u.id}
-              onSelect={() => switchTo(u.id)}
-              className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none hover:bg-cu-hover focus:bg-cu-hover"
-            >
-              <Avatar user={u} size="md" />
-              <span className="flex-1 truncate">{u.name}</span>
-              {u.id === currentUser.id && <span className="text-[11px] text-cu-purple">current</span>}
-            </DropdownMenu.Item>
-          ))}
+          <div className="px-2 py-1.5 text-xs text-cu-text-secondary">Cuenta de SAV3</div>
           <DropdownMenu.Separator className="my-1 h-px bg-cu-border" />
           <DropdownMenu.Item
             onSelect={() => setProfileOpen(true)}
@@ -426,7 +401,7 @@ function ListItemRow({ list, depth }: { list: ListNode & { spaceId?: string }; d
   }
 
   return (
-    <Link
+    <a
       href={`/l/${list.id}`}
       onDoubleClick={(e) => { e.preventDefault(); setRenaming(true); }}
       className={cn(
@@ -450,7 +425,7 @@ function ListItemRow({ list, depth }: { list: ListNode & { spaceId?: string }; d
           }}
         />
       </span>
-    </Link>
+    </a>
   );
 }
 

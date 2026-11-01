@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (error || !data)
     return (
       <div className="flex h-full items-center justify-center text-sm text-cu-text-secondary">
-        Failed to load workspace. Is the database seeded? (`pnpm db:seed`)
+        No pudimos abrir el espacio. Recargá la página o consultá el informe de importación.
       </div>
     );
 
@@ -107,6 +107,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <span className="text-[14px] font-semibold">Open ClickUp</span>
           </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cu-border bg-cu-purple-light px-4 py-2 text-[12px] text-cu-text"><span>SAV3 · Espacio del equipo · {({OWNER:"Propietario",ADMIN:"Administrador",MEMBER:"Miembro",GUEST:"Invitado · solo lectura"} as Record<string,string>)[data.authorization.role]}</span>{data.authorization.admin&&<a href="/lab-report" className="font-semibold text-cu-purple hover:underline">Ver importación y diferencias</a>}</div>
           {children}
         </main>
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />

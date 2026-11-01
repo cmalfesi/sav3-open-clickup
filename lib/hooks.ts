@@ -11,7 +11,7 @@ import { apiGet, apiSend } from "@/lib/api";
 import type { ListData, TaskWithRelations, UserLite, WorkspaceTree } from "@/lib/queries";
 import type { TaskPatch } from "@/lib/tasks";
 
-export type Bootstrap = { currentUser: UserLite; workspace: WorkspaceTree; favorites: string[] };
+export type Bootstrap = { currentUser: UserLite; workspace: WorkspaceTree; favorites: string[]; authorization:{role:string;admin:boolean} };
 
 export function useToggleFavorite() {
   const qc = useQueryClient();

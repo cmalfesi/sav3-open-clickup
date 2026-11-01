@@ -1,0 +1,21 @@
+{
+  "workspaceId": "90132980889",
+  "operations": [
+    {
+      "sql": "INSERT OR IGNORE INTO Workspace (id,name,color,createdAt) VALUES (?,?,?,?)",
+      "params": [
+        "90132980889",
+        "SAV3 · espacio local",
+        "#7b68ee",
+        "2026-10-30T00:00:00.000Z"
+      ]
+    }
+  ],
+  "report": {
+    "counts": {},
+    "restored_source_views": 0,
+    "additional_limitations": [
+      "No backup is included in this public repository. Import your own authorized backup before initialization."
+    ]
+  }
+}

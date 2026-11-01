@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodType } from "zod";
+import { AccessError } from "./access-context";
 
 /** Throw to short-circuit a route handler with a specific HTTP status. */
 export class ApiError extends Error {
@@ -31,7 +32,7 @@ export async function readJson<T>(req: Request, schema: ZodType<T>): Promise<T> 
 
 /** Normalize any thrown value into a JSON error response. */
 export function handleError(e: unknown): NextResponse {
-  if (e instanceof ApiError) {
+  if (e instanceof ApiError || e instanceof AccessError) {
     return NextResponse.json({ error: e.message }, { status: e.status });
   }
   // Prisma "record not found" → 404
@@ -45,8 +46,8 @@ export function handleError(e: unknown): NextResponse {
 
 /** Wrap a route handler so thrown errors become consistent JSON responses. */
 export function route<Ctx>(
-  fn: (req: Request, ctx: Ctx) => Promise<NextResponse>,
-): (req: Request, ctx: Ctx) => Promise<NextResponse> {
+  fn: (req: Request, ctx: Ctx) => Promise<Response>,
+): (req: Request, ctx: Ctx) => Promise<Response> {
   return async (req, ctx) => {
     try {
       return await fn(req, ctx);

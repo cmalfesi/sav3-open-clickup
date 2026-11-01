@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useSiteRouter as useRouter } from "@/lib/site-navigation";
 import * as Popover from "@radix-ui/react-popover";
 import { Inbox } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";

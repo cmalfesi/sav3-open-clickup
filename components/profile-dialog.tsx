@@ -22,7 +22,7 @@ export function ProfileDialog({ open, onClose }: { open: boolean; onClose: () =>
       const form = new FormData();
       form.append("file", file);
       const res = await fetch("/api/me/avatar", { method: "POST", body: form });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Upload failed");
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as {error?:string}).error ?? "Upload failed");
     },
     onSuccess: () => {
       setError(null);

@@ -4,11 +4,12 @@
 
 generator client {
   provider = "prisma-client"
+  runtime = "workerd"
   output   = "../lib/generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 // ----------------------------------------------------------------------------

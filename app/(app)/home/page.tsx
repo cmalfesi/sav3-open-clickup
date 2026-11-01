@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useSiteRouter as useRouter } from "@/lib/site-navigation";
 import {
   startOfDay,
   isBefore,
