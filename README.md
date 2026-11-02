@@ -1,12 +1,13 @@
-# SAV3 · Open ClickUp — código de producción v5
+# SAV3 · Open ClickUp — código de producción v6
 
-Esta copia exporta el código de la versión 5 publicada en Sites, commit
-`8cd19b0c06c119c25e6d6c67478eb1b66bc072fe`, sobre el upstream
+Esta copia exporta el código de la versión 6 publicada en Sites, commit
+`f35f47f507893d38d256c03772eec5aebba79360`, sobre el upstream
 `goshops-com/open-clickup` (`fd92240fbcec674afed5096b61f9414d16d1b653`).
 
 Incluye ingreso por contraseña, invitaciones, roles, Settings, permisos por
 recurso, dashboards básicos, navegación corregida y adaptación a D1/R2.
-El envío de invitaciones por correo sigue siendo manual.
+El envío de invitaciones por correo sigue siendo manual. La versión 6 evita
+volver a mostrar la pantalla de importación al navegar por espacios ya restaurados.
 
 ## Código y datos
 
@@ -16,7 +17,6 @@ parte de este repositorio público. No se ha migrado la base de datos de producc
 `PRODUCTION_SOURCE.json` registra qué archivos coinciden con producción y qué
 archivos se excluyeron o adaptaron para distribuir el código.
 
-La rama `main` de tu GitHub no cambia hasta que subas esta rama y la integres.
 No mezcles el historial privado de Sites: contiene datos del respaldo.
 
 ## Abrir en VS Code

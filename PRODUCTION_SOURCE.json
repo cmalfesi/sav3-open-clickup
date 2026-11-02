@@ -1,6 +1,6 @@
 {
-  "production_version": 5,
-  "production_commit": "8cd19b0c06c119c25e6d6c67478eb1b66bc072fe",
+  "production_version": 6,
+  "production_commit": "f35f47f507893d38d256c03772eec5aebba79360",
   "base_upstream_commit": "fd92240fbcec674afed5096b61f9414d16d1b653",
   "runtime_code": "Identical to production; no production database export included.",
   "excluded": [
@@ -64,7 +64,7 @@
     },
     {
       "path": "app/(app)/layout.tsx",
-      "sha256": "dd4fad4c09df86df8385c4fc1db82a464c9cb98b316791962ec4378ed57037d2"
+      "sha256": "007ed8e2297e81a75005f8b7ed21f4a2038fd6e1543d0afce23d95e4e54efb59"
     },
     {
       "path": "app/(app)/settings/page.tsx",
@@ -364,7 +364,7 @@
     },
     {
       "path": "components/restore-gate.tsx",
-      "sha256": "a81034c13694457ae11051a5ed0e5801295a6c24e4f794fe822e3e65e19c12e0"
+      "sha256": "943c1e5ac5400f5c2685d06930574e8b1b82f03150e7659d7e74efefd322efb3"
     },
     {
       "path": "components/shortcuts-help.tsx",
@@ -784,7 +784,7 @@
     },
     {
       "path": "docs/decisions/README.md",
-      "sha256": "67248a13bd9fde3d9900ad5a4412554a77925d3522d0bb012ce50ef6e82fa96b"
+      "sha256": "23d775d73b2af10a8ace364930db859f228986a134f31e77dce251816a1d8f97"
     },
     {
       "path": "docs/principles.md",
@@ -1217,6 +1217,14 @@
     {
       "path": "worker/index.ts",
       "sha256": "d136d1db697418219afa712827a495f2a282689949e076e573d783ca4c64f911"
+    },
+    {
+      "path": "docs/decisions/0012-restored-workspace-initial-render.md",
+      "sha256": "35058d643dbb844e3f9a9cbc855ae04cae54c5d901bfcc56cf40d30e5977a8a0"
+    },
+    {
+      "path": "tests/restore-gate.test.ts",
+      "sha256": "b0138a267e2e5feec6c924b99b1fb42077cfa69f881736ed13e78a6bce8eff6f"
     }
   ]
 }

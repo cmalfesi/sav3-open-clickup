@@ -38,3 +38,6 @@ that's an ADR.
 | [0009](0009-sites-navigation-and-d1-lists.md) | Native navigation and bounded D1 reads | Accepted |
 
 | [0010](0010-public-entry-private-workspace.md) | Public entry with protected workspace and attachments | Accepted |
+# Navigation after import
+
+- [0012 — Render restored workspaces immediately](0012-restored-workspace-initial-render.md)
