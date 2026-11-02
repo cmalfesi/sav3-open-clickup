@@ -23,6 +23,7 @@ import { apiGet, apiSend } from "@/lib/api";
 import type { TaskDetail } from "@/lib/queries";
 import type { TaskPatch } from "@/lib/tasks";
 import { Priority } from "@/lib/enums";
+import { useUpdateTask } from "@/lib/hooks";
 import { StatusControl, StatusCircle } from "@/components/menus/status-control";
 import { PriorityControl } from "@/components/menus/priority-control";
 import { AssigneeControl } from "@/components/menus/assignee-control";
@@ -65,10 +66,8 @@ export function TaskModal({
     qc.invalidateQueries({ queryKey: ["list", listId] });
   };
 
-  const update = useMutation({
-    mutationFn: (patch: TaskPatch) => apiSend<TaskDetail>(`/api/tasks/${taskId}`, "PATCH", patch),
-    onSuccess: invalidate,
-  });
+  const taskUpdate = useUpdateTask(listId);
+  const update = { mutate: (patch:TaskPatch) => taskUpdate.mutate({taskId,patch}) };
 
   const addComment = useMutation({
     mutationFn: (body: string) => apiSend(`/api/tasks/${taskId}/comments`, "POST", { body }),
@@ -125,6 +124,7 @@ export function TaskModal({
                 {/* main */}
                 <div className="flex min-w-0 flex-1 flex-col overflow-y-auto p-4 md:p-6">
                   <TitleField
+                    key={taskUpdate.isError ? taskUpdate.submittedAt : "title"}
                     value={task.name}
                     onSave={(name) => update.mutate({ name })}
                   />

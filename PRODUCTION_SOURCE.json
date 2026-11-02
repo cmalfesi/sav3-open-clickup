@@ -1,6 +1,6 @@
 {
-  "production_version": 6,
-  "production_commit": "f35f47f507893d38d256c03772eec5aebba79360",
+  "production_version": 7,
+  "production_commit": "7be2c1b5b5a947dc6e21aa0229124ce49679c6d8",
   "base_upstream_commit": "fd92240fbcec674afed5096b61f9414d16d1b653",
   "runtime_code": "Identical to production; no production database export included.",
   "excluded": [
@@ -320,7 +320,7 @@
     },
     {
       "path": "components/app-shell.tsx",
-      "sha256": "e68af26e7ae00ad7e9a40c9027c27d6cc889f9b887df8811ddfa8ab72104ae35"
+      "sha256": "be775076e9b1a8d1abc47fe69cc6dd2e39c70e3fa6fba00e32f0e84492272da7"
     },
     {
       "path": "components/command-palette.tsx",
@@ -360,7 +360,7 @@
     },
     {
       "path": "components/providers.tsx",
-      "sha256": "9a503a82d609f9fd5962e149fc71e22c4c22c569b4fa7d8672753cca6bae9e06"
+      "sha256": "2c57bd2a32bc35d24f0bc8a6cdba5b5d2e09c72561c830fbe93c92b91f0cf54d"
     },
     {
       "path": "components/restore-gate.tsx",
@@ -404,7 +404,7 @@
     },
     {
       "path": "components/task/task-modal.tsx",
-      "sha256": "7eb882f10b0308903a8e01e5209e552fdbc15cb226a92435a1caf2b08ca0c56c"
+      "sha256": "8a29d9ab2f36980eeb8773b95fc30abe2735dce56062c3d1d3a8ec1fc52c22c7"
     },
     {
       "path": "components/task/time-tracking.tsx",
@@ -704,7 +704,7 @@
     },
     {
       "path": "components/views/list-page.tsx",
-      "sha256": "4d4e38d14b8054d50a765d73be9c481e68d3473e832227ec2d3d7420a2637af3"
+      "sha256": "f3bf964d7a4defe3f925db99b5cf170c02570fa75a8bdb2a972a87e72a119ee4"
     },
     {
       "path": "components/views/list-view.tsx",
@@ -784,7 +784,7 @@
     },
     {
       "path": "docs/decisions/README.md",
-      "sha256": "23d775d73b2af10a8ace364930db859f228986a134f31e77dce251816a1d8f97"
+      "sha256": "206e6d354a3daf71a222a6f757214112c109208d879c25c25acfbd27f14c9c8a"
     },
     {
       "path": "docs/principles.md",
@@ -844,7 +844,7 @@
     },
     {
       "path": "lib/access-context.ts",
-      "sha256": "2ed9e83cd1d1c39c6c090d89dff17483102f0007e2021e336c19cef44ad19fda"
+      "sha256": "b6950f31c81aa12bd477edb36ee803294b05bebf72ae6a2d26217cf613e63f08"
     },
     {
       "path": "lib/api-helpers.ts",
@@ -852,7 +852,7 @@
     },
     {
       "path": "lib/api.ts",
-      "sha256": "dbd1f5f10d890cb73ecffed456e6515ae3ac6428500310f84d360b59adbdff53"
+      "sha256": "a4a2ae29e4810667a85243500b0b95d8ffaf1e6ea5cf2a3576e3395b30f43ec1"
     },
     {
       "path": "lib/auth.ts",
@@ -884,7 +884,7 @@
     },
     {
       "path": "lib/db.ts",
-      "sha256": "c0c4d50793da65d2f3bf34c51654abff387db665eeafd766def30a081cc6a4e0"
+      "sha256": "863379c19c3b2ed24219ad2622a03bb59cdf64b73b535fe4f0249b170dbf8e94"
     },
     {
       "path": "lib/enums.ts",
@@ -892,7 +892,7 @@
     },
     {
       "path": "lib/events.ts",
-      "sha256": "d6595aadd2ad1076f969574cb8ae6331232abeb3783e9bd9c447c63665da5f34"
+      "sha256": "af94a10e8a746d05b227ef3bb3cdb701ed4d55c275dbe37b90d76ae4322d8a2b"
     },
     {
       "path": "lib/grouping.ts",
@@ -904,7 +904,7 @@
     },
     {
       "path": "lib/hooks.ts",
-      "sha256": "5ba944dad45d56205b5725dc57342d1090886776404066c5e98152613e18c57e"
+      "sha256": "774a236a4a139228d7f7a71c37fa289de5c0a44b983179d7a37e31fc2971deb4"
     },
     {
       "path": "lib/mention-suggestion.ts",
@@ -932,7 +932,7 @@
     },
     {
       "path": "lib/queries.ts",
-      "sha256": "56de9acee611b725ddb4a0ec780e49de3a03c61cafb107e9b9c865595850e6eb"
+      "sha256": "8f0305c67cb6ab8c5c5fb1a553c7a7bc6cba78b764a3ab3a7331570045588443"
     },
     {
       "path": "lib/rate-limit.ts",
@@ -952,11 +952,11 @@
     },
     {
       "path": "lib/tasks.ts",
-      "sha256": "72043c478415315341cf45ab007a87842e0defb6b9000d79a9112d07b6eb42c1"
+      "sha256": "d1ab1a38c04be651974ee9a50bc5fa456f9a31c28c031fc07756145bbf13b490"
     },
     {
       "path": "lib/team-service.ts",
-      "sha256": "1a4d4e42e10d3f74befd10ff2bd962b4666fe543cee7b75859a9a7949e1b6f39"
+      "sha256": "b09cbc024b6255d71c6adcc8d4f43080a895f2e7db90992e8cf8f47ccbebfb52"
     },
     {
       "path": "lib/time.ts",
@@ -1152,7 +1152,7 @@
     },
     {
       "path": "tests/lists.d1.test.ts",
-      "sha256": "540d4b68357a848c54de2c338b725d2bc040a3116cbe10dcc49328e5401696f2"
+      "sha256": "ffa351b3ea70d347282afe567632f44ee85c0b827349055c34731a3b5698895a"
     },
     {
       "path": "tests/mentions.test.ts",
@@ -1225,6 +1225,22 @@
     {
       "path": "tests/restore-gate.test.ts",
       "sha256": "b0138a267e2e5feec6c924b99b1fb42077cfa69f881736ed13e78a6bce8eff6f"
+    },
+    {
+      "path": "docs/decisions/0013-task-save-and-list-latency.md",
+      "sha256": "7be095fdb67709baefd9ba8ce5593f170f1a310772c3bce720625e60415cebec"
+    },
+    {
+      "path": "lib/list-task-reader.ts",
+      "sha256": "cc5f15ae6074baedb45cce6b2168487218fe4ea41ec63f8c63410bc6a012dfe2"
+    },
+    {
+      "path": "lib/task-cache.ts",
+      "sha256": "a1279afa272ace3f4013e5502cec5ea265a2a421edf03878781709c530e0518a"
+    },
+    {
+      "path": "tests/task-cache.test.ts",
+      "sha256": "ad5c83dc5a59a8700268759b09c31f5193dd7dccb9d752b366209e5ef0acda0c"
     }
   ]
 }

@@ -12,29 +12,26 @@ export const sessionCookie = (req: Request, value: string, age = SESSION_SECONDS
 const userColumns = "u.id,u.email,u.name,u.color,u.avatarUrl";
 type User = Actor["user"];
 async function rows<T>(db: D1Database, sql: string, ...args: (string | number)[]) { return (await db.prepare(sql).bind(...args).all<T>()).results; }
+function graphStatements(db: D1Database) {
+    return [
+        db.prepare('SELECT id,name FROM Space'),
+        db.prepare('SELECT id,name,spaceId FROM List'),
+        db.prepare('SELECT id,name,listId,parentId FROM Task'),
+        db.prepare('SELECT id,name FROM Dashboard'),
+    ];
+}
+function graphFromResults(results: D1Result[]): Resource[] {
+    const spaces = results[0].results as {id:string;name:string}[];
+    const lists = results[1].results as {id:string;name:string;spaceId:string}[];
+    const tasks = results[2].results as {id:string;name:string;listId:string;parentId:string|null}[];
+    const dashboards = results[3].results as {id:string;name:string}[];
+    return [...spaces.map(r=>({...r,type:"SPACE" as const})),
+        ...lists.map(r=>({...r,type:"LIST" as const,parentId:r.spaceId,parentType:"SPACE" as const})),
+        ...tasks.map(r=>({...r,type:"TASK" as const,parentId:r.parentId??r.listId,parentType:r.parentId?"TASK" as const:"LIST" as const})),
+        ...dashboards.map(r=>({...r,type:"DASHBOARD" as const}))];
+}
 export async function resourceGraph(db: D1Database): Promise<Resource[]> {
-    const [spaces, lists, tasks, dashboards] = await Promise.all([
-        rows<{
-            id: string;
-            name: string;
-        }>(db, 'SELECT id,name FROM Space'),
-        rows<{
-            id: string;
-            name: string;
-            spaceId: string;
-        }>(db, 'SELECT id,name,spaceId FROM List'),
-        rows<{
-            id: string;
-            name: string;
-            listId: string;
-            parentId: string | null;
-        }>(db, 'SELECT id,name,listId,parentId FROM Task'),
-        rows<{
-            id: string;
-            name: string;
-        }>(db, 'SELECT id,name FROM Dashboard')
-    ]);
-    return [...spaces.map(r => ({ ...r, type: "SPACE" as const })), ...lists.map(r => ({ ...r, type: "LIST" as const, parentId: r.spaceId, parentType: "SPACE" as const })), ...tasks.map(r => ({ ...r, type: "TASK" as const, parentId: r.parentId ?? r.listId, parentType: r.parentId ? "TASK" as const : "LIST" as const })), ...dashboards.map(r => ({ ...r, type: "DASHBOARD" as const }))];
+    return graphFromResults(await db.batch(graphStatements(db)));
 }
 export async function loadActor(db: D1Database, req: Request): Promise<Actor | null> {
     let user: User | null = null, role: Role = "GUEST", scopeAll = false, kind: Actor["kind"] = "native", sessionId: string | undefined;
@@ -63,7 +60,7 @@ export async function loadActor(db: D1Database, req: Request): Promise<Actor | n
         if (!state?.complete || state.ownerKey !== id)
             return null;
         // The existing Site owner is the only native identity that can bootstrap.
-        user = await db.prepare(`SELECT ${userColumns} FROM User u JOIN WorkspaceMember m ON m.userId=u.id WHERE m.workspaceId=? AND m.role='OWNER' AND lower(u.email)=?`).bind(WORKSPACE, email).first<User>();
+        user = await db.prepare(`SELECT ${userColumns},a.enabled,a.scopeAll FROM User u JOIN WorkspaceMember m ON m.userId=u.id LEFT JOIN AccountAccess a ON a.userId=u.id WHERE m.workspaceId=? AND m.role='OWNER' AND lower(u.email)=?`).bind(WORKSPACE, email).first<User & {enabled:number|null;scopeAll:number|null}>();
         if (!user) {
             const userId = "site_" + id;
             await db.batch([
@@ -75,14 +72,19 @@ export async function loadActor(db: D1Database, req: Request): Promise<Actor | n
         role = "OWNER";
         scopeAll = true;
         sessionId = undefined;
-        await db.prepare('INSERT INTO AccountAccess (userId,enabled,scopeAll) VALUES (?,1,1) ON CONFLICT(userId) DO UPDATE SET enabled=1,scopeAll=1').bind(user!.id).run();
+        if ((user as User & {enabled?:number;scopeAll?:number}).enabled !== 1 || (user as User & {scopeAll?:number}).scopeAll !== 1) await db.prepare('INSERT INTO AccountAccess (userId,enabled,scopeAll) VALUES (?,1,1) ON CONFLICT(userId) DO UPDATE SET enabled=1,scopeAll=1').bind(user!.id).run();
     }
-    const [resources, grants, policies] = await Promise.all([resourceGraph(db), rows<Grant>(db, 'SELECT resourceType,resourceId,level FROM ResourceGrant WHERE userId=?', user!.id), rows<{
-            resourceType: string;
-            resourceId: string;
-        }>(db, 'SELECT resourceType,resourceId FROM ResourcePolicy WHERE restricted=1')]);
+    // Fresh authorization snapshot in one round trip; never cache grants across requests.
+    const accessRows = await db.batch([...graphStatements(db),
+        db.prepare('SELECT resourceType,resourceId,level FROM ResourceGrant WHERE userId=?').bind(user!.id),
+        db.prepare('SELECT resourceType,resourceId FROM ResourcePolicy WHERE restricted=1'),
+    ]);
+    const resources = graphFromResults(accessRows);
+    const grants = accessRows[4].results as Grant[];
+    const policies = accessRows[5].results as {resourceType:string;resourceId:string}[];
     const safeUser = { id: user!.id, email: user!.email, name: user!.name, color: user!.color, avatarUrl: user!.avatarUrl };
-    return { user: safeUser, role, workspaceId: WORKSPACE, kind, sessionId, access: new Access(role, scopeAll, resources, grants, policies.map(p => `${p.resourceType}:${p.resourceId}`)) };
+    const clientId = req.headers.get("x-sav3-client") ?? "";
+    return { clientId: /^[a-f0-9-]{36}$/i.test(clientId) ? clientId : undefined, user: safeUser, role, workspaceId: WORKSPACE, kind, sessionId, access: new Access(role, scopeAll, resources, grants, policies.map(p => `${p.resourceType}:${p.resourceId}`)) };
 }
 async function audit(db: D1Database, a: Actor, action: string, target: string) { await db.prepare('INSERT INTO AccessAudit (id,actorId,action,targetId,createdAt) VALUES (?,?,?,?,?)').bind(randomUUID(), a.user.id, action, target, Date.now()).run(); }
 async function throttle(db: D1Database, key: string, limit = 12) {

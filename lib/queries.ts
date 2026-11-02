@@ -1,6 +1,7 @@
 import { actor } from "./access-context";
 import { Prisma } from "@/lib/generated/prisma/client";
-import { prisma } from "@/lib/db";
+import { prisma, getD1 } from "@/lib/db";
+import { readListTasks } from "./list-task-reader";
 
 // ----------------------------------------------------------------------------
 // Reusable include shapes (single source of truth for API <-> client types)
@@ -88,7 +89,7 @@ export type ListNode = SpaceNode["lists"][number];
 export async function getListData(listId: string) {
   const a = actor();
   if (!a.access.visibleList(listId)) return null;
-  const list = await prisma.list.findUnique({
+  const [list, loaded] = await Promise.all([prisma.list.findUnique({
     where: { id: listId },
     include: {
       space: { select: { id: true, name: true, color: true, icon: true } },
@@ -100,40 +101,14 @@ export async function getListData(listId: string) {
       },
       views: { orderBy: { position: "asc" } },
     },
-  });
+  }), readListTasks(getD1(),listId)]);
   if (!list) return null;
 
-  // D1 limits bound parameters. Prisma expands relation includes into IN
-  // queries, so load bounded pages without truncating the user's list.
-  const tasks: TaskWithRelations[] = [];
-  const pageSize = 20;
-  for (let skip = 0; ; skip += pageSize) {
-    const page = await prisma.task.findMany({
-      where: { listId, parentId: null, archived: false },
-      orderBy: [{ position: "asc" }, { id: "asc" }],
-      skip,
-      take: pageSize,
-      include: taskInclude,
-    });
-    tasks.push(...page.filter(t=>a.access.can("TASK",t.id)).map(t=>({...t,subtasks:t.subtasks.filter(st=>a.access.can("TASK",st.id)),_count:{...t._count,subtasks:t.subtasks.filter(st=>a.access.can("TASK",st.id)).length}})));
-    if (page.length < pageSize) break;
-  }
-
-  // dependency edges between visible tasks (for Gantt arrows)
-  const taskIds = tasks.map((t) => t.id);
-  const dependencies = taskIds.length
-    ? await prisma.taskDependency.findMany({
-        where: {
-          blocker: { listId, parentId: null, archived: false },
-          blocked: { listId, parentId: null, archived: false },
-        },
-        select: { id: true, blockerId: true, blockedId: true },
-      })
-    : [];
-
-  // A directly shared subtask is discoverable even if its parent is private.
-  const shared = a.access.resources("TASK").filter(t=>t.listId===listId&&a.access.can("TASK",t.id)&&t.parentType==="TASK"&&!a.access.can("TASK",t.parentId!));
-  for (const node of shared) { const task=await prisma.task.findUnique({where:{id:node.id},include:taskInclude});if(task&&!task.archived)tasks.push({...task,subtasks:task.subtasks.filter(st=>a.access.can("TASK",st.id)),_count:{...task._count,subtasks:task.subtasks.filter(st=>a.access.can("TASK",st.id)).length}}); }
+  const tasks = loaded.tasks.filter(t => {
+    if (!a.access.can("TASK",t.id)) return false;
+    return !t.parentId || !a.access.can("TASK",t.parentId);
+  }).map(visibleTask);
+  const dependencies = loaded.dependencies;
   return { list, tasks, dependencies:dependencies.filter(d=>a.access.can("TASK",d.blockerId)&&a.access.can("TASK",d.blockedId)) };
 }
 

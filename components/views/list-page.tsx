@@ -117,13 +117,15 @@ export function ListPage({ listId }: { listId: string }) {
   );
 
   async function addTask() {
-    if (!data) return;
+    if (!data || create.isPending) return;
+    try {
     const task = await create.mutateAsync({
       listId,
       name: "New task",
       statusId: data.list.statuses[0]?.id,
     });
     setOpenTaskId(task.id);
+    } catch { /* Global mutation feedback displays the save failure. */ }
   }
 
   // global "c" keyboard shortcut → create a task in this list

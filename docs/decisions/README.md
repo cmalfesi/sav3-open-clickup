@@ -41,3 +41,5 @@ that's an ADR.
 # Navigation after import
 
 - [0012 — Render restored workspaces immediately](0012-restored-workspace-initial-render.md)
+
+- [0013 — Task save and list latency](0013-task-save-and-list-latency.md)

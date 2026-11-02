@@ -1,6 +1,8 @@
-import { prisma } from "@/lib/db";
+import { actorOrNull } from "./access-context";
+import { prisma, getD1 } from "@/lib/db";
+import { readTaskRelations } from "./list-task-reader";
 import { Priority, Prisma } from "@/lib/generated/prisma/client";
-import { taskInclude, visibleTask } from "@/lib/queries";
+import { visibleTask } from "@/lib/queries";
 import { publish } from "@/lib/events";
 import { createNotifications } from "@/lib/notifications";
 import { nextOccurrence, type Recurrence } from "@/lib/recurrence";
@@ -45,15 +47,14 @@ export async function createTask(input: {
         ? { create: input.assigneeIds.map((userId) => ({ userId })) }
         : undefined,
     },
-    include: taskInclude,
   });
 
   await prisma.activity.create({
     data: { taskId: task.id, userId: input.createdById, type: "created", data: {} },
   });
 
-  publish({ type: "list", listId: input.listId });
-  return visibleTask(task);
+  publish({ type: "list", listId: input.listId, clientId: actorOrNull()?.clientId });
+  return visibleTask(await readTaskRelations(getD1(),task.id));
 }
 
 export type TaskPatch = {
@@ -75,7 +76,11 @@ export type TaskPatch = {
 export async function updateTask(taskId: string, patch: TaskPatch, actorId?: string) {
   const existing = await prisma.task.findUnique({
     where: { id: taskId },
-    include: { assignees: true, tags: true, watchers: true, status: true },
+    include: {
+      assignees: patch.assigneeIds !== undefined || patch.statusId !== undefined,
+      tags: patch.tagIds !== undefined || patch.statusId !== undefined,
+      watchers: patch.watcherIds !== undefined,
+    },
   });
   if (!existing) throw new Error("Task not found");
 
@@ -159,7 +164,6 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
   const task = await prisma.task.update({
     where: { id: taskId },
     data,
-    include: taskInclude,
   });
 
   if (activityLog.length) {
@@ -173,7 +177,7 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
     await spawnNextOccurrence(existing, actorId);
   }
 
-  publish({ type: "list", listId: existing.listId });
+  publish({ type: "list", listId: existing.listId, clientId: actorOrNull()?.clientId });
 
   if (addedAssignees.length && actorId) {
     await createNotifications({
@@ -184,7 +188,7 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
       body: "assigned you a task",
     });
   }
-  return visibleTask(task);
+  return visibleTask(await readTaskRelations(getD1(),task.id));
 }
 
 type RecurringSource = {

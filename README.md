@@ -1,13 +1,16 @@
-# SAV3 · Open ClickUp — código de producción v6
+# SAV3 · Open ClickUp — código de producción v7
 
-Esta copia exporta el código de la versión 6 publicada en Sites, commit
-`f35f47f507893d38d256c03772eec5aebba79360`, sobre el upstream
+Esta copia exporta el código de la versión 7 publicada en Sites, commit
+`7be2c1b5b5a947dc6e21aa0229124ce49679c6d8`, sobre el upstream
 `goshops-com/open-clickup` (`fd92240fbcec674afed5096b61f9414d16d1b653`).
 
 Incluye ingreso por contraseña, invitaciones, roles, Settings, permisos por
 recurso, dashboards básicos, navegación corregida y adaptación a D1/R2.
 El envío de invitaciones por correo sigue siendo manual. La versión 6 evita
 volver a mostrar la pantalla de importación al navegar por espacios ya restaurados.
+
+La versión 7 agrupa lecturas D1, actualiza tareas sin recargar la lista completa,
+muestra guardados pendientes y revierte cambios rechazados.
 
 ## Código y datos
 

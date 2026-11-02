@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useIsMutating } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import { PanelLeft, Menu } from "lucide-react";
 import { useBootstrap, useRealtime } from "@/lib/hooks";
@@ -17,6 +18,7 @@ function isTyping(target: EventTarget | null): boolean {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { data, isLoading, error } = useBootstrap();
+  const pendingWrites = useIsMutating();
   const [collapsed, setCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -107,7 +109,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <span className="text-[14px] font-semibold">Open ClickUp</span>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cu-border bg-cu-purple-light px-4 py-2 text-[12px] text-cu-text"><span>SAV3 · Espacio del equipo · {({OWNER:"Propietario",ADMIN:"Administrador",MEMBER:"Miembro",GUEST:"Invitado · solo lectura"} as Record<string,string>)[data.authorization.role]}</span>{data.authorization.admin&&<a href="/lab-report" className="font-semibold text-cu-purple hover:underline">Ver importación y diferencias</a>}</div>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cu-border bg-cu-purple-light px-4 py-2 text-[12px] text-cu-text"><span>SAV3 · Espacio del equipo · {({OWNER:"Propietario",ADMIN:"Administrador",MEMBER:"Miembro",GUEST:"Invitado · solo lectura"} as Record<string,string>)[data.authorization.role]}</span><span role="status" aria-live="polite">{pendingWrites > 0 ? "Guardando…" : ""}</span>{data.authorization.admin&&<a href="/lab-report" className="font-semibold text-cu-purple hover:underline">Ver importación y diferencias</a>}</div>
           {children}
         </main>
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
