@@ -2,7 +2,7 @@
 // For multi-instance deployments swap this for Redis pub/sub.
 
 export type RealtimeEvent =
-  | { type: "list"; listId: string }
+  | { type: "list"; listId: string; clientId?: string }
   | { type: "bootstrap" };
 
 type Listener = (event: RealtimeEvent) => void;

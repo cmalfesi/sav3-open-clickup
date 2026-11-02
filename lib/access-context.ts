@@ -62,6 +62,7 @@ export type Actor = {
     kind: "local" | "native";
     access: Access;
     sessionId?: string;
+    clientId?: string;
 };
 const context = new AsyncLocalStorage<Actor>();
 export function withActor<T>(actor: Actor, fn: () => T): T { return context.run(actor, fn); }

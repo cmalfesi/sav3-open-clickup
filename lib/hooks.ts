@@ -7,9 +7,9 @@ import {
   keepPreviousData,
 } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { apiGet, apiSend } from "@/lib/api";
+import { taskUpdateOptions, putSavedTask } from "./task-cache";
+import { apiGet, apiSend, mutationSource } from "@/lib/api";
 import type { ListData, TaskWithRelations, UserLite, WorkspaceTree } from "@/lib/queries";
-import type { TaskPatch } from "@/lib/tasks";
 
 export type Bootstrap = { currentUser: UserLite; workspace: WorkspaceTree; favorites: string[]; authorization:{role:string;admin:boolean} };
 
@@ -32,7 +32,8 @@ export function useRealtime() {
     const es = new EventSource("/api/stream");
     es.onmessage = (e) => {
       try {
-        const event = JSON.parse(e.data) as { type: string; listId?: string };
+        const event = JSON.parse(e.data) as { type: string; listId?: string; clientId?: string };
+        if (event.clientId && event.clientId === mutationSource()) return;
         if (event.type === "list" && event.listId) {
           qc.invalidateQueries({ queryKey: ["list", event.listId] });
           qc.invalidateQueries({ queryKey: ["task"] });
@@ -219,30 +220,7 @@ export function useCreateTag(spaceId: string | undefined) {
 
 export function useUpdateTask(listId: string | undefined) {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ taskId, patch }: { taskId: string; patch: TaskPatch }) =>
-      apiSend<TaskWithRelations>(`/api/tasks/${taskId}`, "PATCH", patch),
-    onMutate: async ({ taskId, patch }) => {
-      if (!listId) return;
-      await qc.cancelQueries({ queryKey: ["list", listId] });
-      const prev = qc.getQueryData<ListData>(["list", listId]);
-      if (prev) {
-        qc.setQueryData<ListData>(["list", listId], {
-          ...prev,
-          tasks: prev.tasks.map((t) =>
-            t.id === taskId ? applyOptimistic(t, patch) : t,
-          ),
-        });
-      }
-      return { prev };
-    },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev && listId) qc.setQueryData(["list", listId], ctx.prev);
-    },
-    onSettled: () => {
-      if (listId) qc.invalidateQueries({ queryKey: ["list", listId] });
-    },
-  });
+  return useMutation(taskUpdateOptions(qc,listId));
 }
 
 export function useCreateTask(listId: string | undefined) {
@@ -256,8 +234,9 @@ export function useCreateTask(listId: string | undefined) {
       priority?: string | null;
       assigneeIds?: string[];
     }) => apiSend<TaskWithRelations>("/api/tasks", "POST", input),
-    onSettled: () => {
-      if (listId) qc.invalidateQueries({ queryKey: ["list", listId] });
+    onSuccess: (task) => {
+      putSavedTask(qc,listId,task);
+      void qc.invalidateQueries({queryKey:["bootstrap"],refetchType:"none"});
     },
   });
 }
@@ -322,17 +301,4 @@ export function useDeleteTask(listId: string | undefined) {
       if (listId) qc.invalidateQueries({ queryKey: ["list", listId] });
     },
   });
-}
-
-function applyOptimistic(task: TaskWithRelations, patch: TaskPatch): TaskWithRelations {
-  return {
-    ...task,
-    name: patch.name ?? task.name,
-    description: patch.description !== undefined ? patch.description : task.description,
-    priority: patch.priority !== undefined ? (patch.priority as TaskWithRelations["priority"]) : task.priority,
-    statusId: patch.statusId ?? task.statusId,
-    position: patch.position ?? task.position,
-    startDate: patch.startDate !== undefined ? (patch.startDate ? new Date(patch.startDate) : null) : task.startDate,
-    dueDate: patch.dueDate !== undefined ? (patch.dueDate ? new Date(patch.dueDate) : null) : task.dueDate,
-  };
 }
