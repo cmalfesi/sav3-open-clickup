@@ -1,6 +1,6 @@
 {
-  "production_version": 7,
-  "production_commit": "7be2c1b5b5a947dc6e21aa0229124ce49679c6d8",
+  "production_version": 8,
+  "production_commit": "30c48ad9c3ad611a070929c807f06cf35ef8dc00",
   "base_upstream_commit": "fd92240fbcec674afed5096b61f9414d16d1b653",
   "runtime_code": "Identical to production; no production database export included.",
   "excluded": [
@@ -40,7 +40,7 @@
     },
     {
       "path": "app/(app)/dashboards/page.tsx",
-      "sha256": "43d78efcdceaeea4a82abe16ed2e6a6d561026cc4569363c0d25c5e2ad2a3266"
+      "sha256": "3d3d47ed6c88afcb1919b921e082fef65c81f45828746a7ff8ca77d32c6e0f89"
     },
     {
       "path": "app/(app)/documents/page.tsx",
@@ -68,7 +68,7 @@
     },
     {
       "path": "app/(app)/settings/page.tsx",
-      "sha256": "04a77cb7e20516c9ee19eba42378c49368edf40aa89f720ff337821820d251f7"
+      "sha256": "c53fc5fd3e8798b13b2cfa559331ce6003a11829f4dbb1977571cc25752d50fd"
     },
     {
       "path": "app/activate/page.tsx",
@@ -116,7 +116,7 @@
     },
     {
       "path": "app/api/comments/[commentId]/route.ts",
-      "sha256": "94bf85e2eab46f917aeda765eacd2f391d04a523125ac632283d561caf812b1a"
+      "sha256": "fede225bf6a85627be55f66166713dd5abb72b809e34e2e987ae7d0b32b343f7"
     },
     {
       "path": "app/api/dependencies/[id]/route.ts",
@@ -184,7 +184,7 @@
     },
     {
       "path": "app/api/notifications/route.ts",
-      "sha256": "c5e60ac40b072d64b42a19bb6afd3e5e51132d2ddd24de467161ed3818abd60f"
+      "sha256": "becf267866a4bcb8d4dbd430ab0acc929be43cf74143322565531a937f46333a"
     },
     {
       "path": "app/api/restore/route.ts",
@@ -224,7 +224,7 @@
     },
     {
       "path": "app/api/tasks/[taskId]/comments/route.ts",
-      "sha256": "8613c4a8cc7b6b8a09b351a3a9ba92424c5418c761f447203c4badb4a74a7f8e"
+      "sha256": "5d5cbc9ec7a846712ba197883feff98114cd5198564d18c570b3778621ed3df0"
     },
     {
       "path": "app/api/tasks/[taskId]/dependencies/route.ts",
@@ -236,7 +236,7 @@
     },
     {
       "path": "app/api/tasks/[taskId]/fields/[fieldId]/route.ts",
-      "sha256": "cce751a512b361dc6e53e7b5f446f1e731ea38ebcd8e740fcb737084ea84b19d"
+      "sha256": "ce12c3729c2ee07df878f4259b7d5ebd1e4a00856c0884b49ad83ddb684e875e"
     },
     {
       "path": "app/api/tasks/[taskId]/move/route.ts",
@@ -244,7 +244,7 @@
     },
     {
       "path": "app/api/tasks/[taskId]/route.ts",
-      "sha256": "c12d1ee68111265e0f56a1d4857d8ebf2640f950fa863d01da69f37cd93bdaf4"
+      "sha256": "be7500f3ff936607f9b6ae47bcbc19e4689e3da570bac7ba2d22dfb35a32d287"
     },
     {
       "path": "app/api/tasks/[taskId]/time/route.ts",
@@ -252,7 +252,7 @@
     },
     {
       "path": "app/api/tasks/bulk/route.ts",
-      "sha256": "a28ecfb77485302becca01adaae7613ab91f25a069461a015a9b362005d0842e"
+      "sha256": "485ac3798b8d0379b993d8a4d296d3103db74d268a6baea88b8fb048305ab7f2"
     },
     {
       "path": "app/api/tasks/route.ts",
@@ -300,7 +300,7 @@
     },
     {
       "path": "app/mcp/route.ts",
-      "sha256": "bc44cfdd8da171fdde08c84d91d048813d74b4cdc393c5dfb6c124c3276c89ee"
+      "sha256": "955f514ffba9d274f6dd5a4e77bf63245ad1548ae513c0fe699777796165b0d0"
     },
     {
       "path": "app/page.tsx",
@@ -320,7 +320,7 @@
     },
     {
       "path": "components/app-shell.tsx",
-      "sha256": "be775076e9b1a8d1abc47fe69cc6dd2e39c70e3fa6fba00e32f0e84492272da7"
+      "sha256": "8d478127a8c47cf9380728d0c77140e4be1b5ba3a0a7100f10af882296cb3e6a"
     },
     {
       "path": "components/command-palette.tsx",
@@ -372,7 +372,7 @@
     },
     {
       "path": "components/sidebar/inbox.tsx",
-      "sha256": "4ddcaf02000c0b780763c9586152ee33bca6957fcf4785880e056debc0dbc8b1"
+      "sha256": "5bdabb690462f75e6f458f6741e9c0bb4549916be656cbcca314b73709845283"
     },
     {
       "path": "components/sidebar/sidebar.tsx",
@@ -404,7 +404,7 @@
     },
     {
       "path": "components/task/task-modal.tsx",
-      "sha256": "8a29d9ab2f36980eeb8773b95fc30abe2735dce56062c3d1d3a8ec1fc52c22c7"
+      "sha256": "8c61a06d901962d5e088d458bbd88f8f85f7c5a8c44928511a22c28e91330ce1"
     },
     {
       "path": "components/task/time-tracking.tsx",
@@ -600,7 +600,7 @@
     },
     {
       "path": "components/ui/rich-editor.tsx",
-      "sha256": "4ad0177636e31471b681267659d8e69c18cb7244f88a817619ee7e73130a86cc"
+      "sha256": "ce9e212609ebf038d3e3f9157c81cf806c74a0891155d08cd5ecc75320f01696"
     },
     {
       "path": "components/ui/scroll-area.tsx",
@@ -732,7 +732,7 @@
     },
     {
       "path": "db/schema.ts",
-      "sha256": "b1d8caec601821d41ab836e19f53145636c1bab876414449445e29e6b9f8c696"
+      "sha256": "7b81a6550b89bff7385648fa690aa632f68c1e210b095a712e189736067fd7f8"
     },
     {
       "path": "docs/decisions/0000-template.md",
@@ -820,7 +820,7 @@
     },
     {
       "path": "drizzle/meta/_journal.json",
-      "sha256": "d3388f46086717bad5fd00b34dea5e6bec67f9c6dffd3e0b0474fa63ee6da90c"
+      "sha256": "028f88661aa3ace44c92428c42f0b5470031839f819d20381b05cb4a64bbb1bb"
     },
     {
       "path": "e2e/app.spec.ts",
@@ -844,7 +844,7 @@
     },
     {
       "path": "lib/access-context.ts",
-      "sha256": "b6950f31c81aa12bd477edb36ee803294b05bebf72ae6a2d26217cf613e63f08"
+      "sha256": "f836344b69eddf978e5f0da1de6694c44a0b372e43d3838b9ce712a0b98d4f1e"
     },
     {
       "path": "lib/api-helpers.ts",
@@ -904,7 +904,7 @@
     },
     {
       "path": "lib/hooks.ts",
-      "sha256": "774a236a4a139228d7f7a71c37fa289de5c0a44b983179d7a37e31fc2971deb4"
+      "sha256": "50bb7af28f39ccaa89ee1313ebf2ed123e8194aaa5ff0d4bf2517f033c76cec2"
     },
     {
       "path": "lib/mention-suggestion.ts",
@@ -916,7 +916,7 @@
     },
     {
       "path": "lib/notifications.ts",
-      "sha256": "d0b9d6d18a85de8cba92a372d213dc12a549749f671d6911a11b40923b772cf7"
+      "sha256": "b5703e762496a9e033c5096b9c0819a7bf21d65e0f2a771aa4babfc62996033d"
     },
     {
       "path": "lib/password.ts",
@@ -932,7 +932,7 @@
     },
     {
       "path": "lib/queries.ts",
-      "sha256": "8f0305c67cb6ab8c5c5fb1a553c7a7bc6cba78b764a3ab3a7331570045588443"
+      "sha256": "b3b4c6b105dbc51f1375f847f41bf0b26d02df64a6890782374322126f7b1b46"
     },
     {
       "path": "lib/rate-limit.ts",
@@ -944,7 +944,7 @@
     },
     {
       "path": "lib/request-access.ts",
-      "sha256": "004dbbb37b94f09507d8236901d208749d801b6b5a463df730f37e7c3577a10f"
+      "sha256": "6c4de56e7506b0161e693e1748b36931feb27f5b544c7e005dfbeee1a215857d"
     },
     {
       "path": "lib/site-navigation.ts",
@@ -952,11 +952,11 @@
     },
     {
       "path": "lib/tasks.ts",
-      "sha256": "d1ab1a38c04be651974ee9a50bc5fa456f9a31c28c031fc07756145bbf13b490"
+      "sha256": "d81179bcc9a40b7d322d504995a96cdcf14133d70d4071df166c2c7b37e9cfe7"
     },
     {
       "path": "lib/team-service.ts",
-      "sha256": "b09cbc024b6255d71c6adcc8d4f43080a895f2e7db90992e8cf8f47ccbebfb52"
+      "sha256": "10bc8f4a069a5bc3189126d7412fc3cc35b5a08bdff13fc8909e8e32b8ee21a5"
     },
     {
       "path": "lib/time.ts",
@@ -1152,7 +1152,7 @@
     },
     {
       "path": "tests/lists.d1.test.ts",
-      "sha256": "ffa351b3ea70d347282afe567632f44ee85c0b827349055c34731a3b5698895a"
+      "sha256": "b6565ccd5e125f7687750f2e7d1d35edc8c72e2140303b274f5d9cb757d5eed6"
     },
     {
       "path": "tests/mentions.test.ts",
@@ -1212,11 +1212,11 @@
     },
     {
       "path": "vitest.config.ts",
-      "sha256": "a991f706f20c3ba49e4caeb8ccaeab1055ef3620537c6848c51fe665d5153163"
+      "sha256": "2baa9a8841aaf67e2ea6d3b38311236062597f0ea3433020c0d91d70db61fb44"
     },
     {
       "path": "worker/index.ts",
-      "sha256": "d136d1db697418219afa712827a495f2a282689949e076e573d783ca4c64f911"
+      "sha256": "853838d77173b4120024b181b8115f77523d780b75fae345cbba928c97697357"
     },
     {
       "path": "docs/decisions/0012-restored-workspace-initial-render.md",
@@ -1236,11 +1236,66 @@
     },
     {
       "path": "lib/task-cache.ts",
-      "sha256": "a1279afa272ace3f4013e5502cec5ea265a2a421edf03878781709c530e0518a"
+      "sha256": "4e441a7d18dcf0f2493ce0235bb9c6172d8a021fe54c2f77dabb68266b680eeb"
     },
     {
       "path": "tests/task-cache.test.ts",
       "sha256": "ad5c83dc5a59a8700268759b09c31f5193dd7dccb9d752b366209e5ef0acda0c"
+    },
+    {
+      "path": "app/api/integrations/mcp/route.ts",
+      "sha256": "9a1ff47c5ae01a47b9abc4a89e4ce81fa346570c9d9aef04b10da393879d23a5"
+    },
+    {
+      "path": "components/changes-notice.tsx",
+      "sha256": "68caf11da3c86a0b885c0bba8d41e72896660cfb294acbe4b52d65fd36ad1c34"
+    },
+    {
+      "path": "components/connections-settings.tsx",
+      "sha256": "2714697318bbc422814fa565a474bde8101e1f1c49035a01dd6f26d9059d7be3"
+    },
+    {
+      "path": "docs/decisions/0011-team-mcp-and-change-notices.md",
+      "sha256": "5accd6917b4c3dfc01f2acc3599999ce96237113916bfdcd296de034928539a3"
+    },
+    {
+      "path": "docs/releases/8.md",
+      "sha256": "31ff9fe571732c76e0eeb7b3792e9ce25bdaaad1030434a4dde59e10d3763ef8"
+    },
+    {
+      "path": "drizzle/0002_loving_caretaker.sql",
+      "sha256": "90b37207ab4918cebbfccd1ef06b27c2d22d646639de47fd4617bcc83d775d20"
+    },
+    {
+      "path": "drizzle/meta/0002_snapshot.json",
+      "sha256": "b12d47549b2eba33b1631db60487788818f155c1dcbc967bd7fb5440d194fdbb"
+    },
+    {
+      "path": "lib/collaboration.ts",
+      "sha256": "e3df668e5b14de7b97c1b0bb0833de612e1db53c241359359cfd4f3a5145feeb"
+    },
+    {
+      "path": "lib/comments.ts",
+      "sha256": "07d19042dd58ae9e1cd70aae68849baa10ba29f8926d4008019b12cb7f277743"
+    },
+    {
+      "path": "lib/drafts.ts",
+      "sha256": "72db76cbe5e08cc4cace84e76f4eb629fa72ed49386f9d10f143d75de88ef207"
+    },
+    {
+      "path": "lib/integration-access.ts",
+      "sha256": "4302095660fac395d06d8a2eb4f9fd0ac827d67fb2ed5861df652a86d0ba95dc"
+    },
+    {
+      "path": "tests/collaboration.d1.test.ts",
+      "sha256": "1b9c5405c3ade8e318683f7f483f7894b2908c9d220f9f036760a63afc9939f0"
     }
-  ]
+  ],
+  "validation": {
+    "tests": 82,
+    "typescript": "passed",
+    "production_build": "passed",
+    "github_ci": "https://github.com/cmalfesi/sav3-open-clickup/actions/runs/41548685628",
+    "browser": "production desktop, keyboard refresh and 390x844 mobile emulation"
+  }
 }
