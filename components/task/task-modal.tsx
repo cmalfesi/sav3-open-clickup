@@ -137,7 +137,7 @@ export function TaskModal({
                       content={task.description ?? ""}
                       placeholder="Add a description…"
                       mentions={mentions}
-                      onBlur={(description) => update.mutate({ description })}
+                      onBlur={(description) => taskUpdate.mutateAsync({taskId,patch:{description}})}
                     />
                   </div>
 
@@ -376,6 +376,16 @@ function activityText(
   const d = (a.data ?? {}) as Record<string, unknown>;
   const names = (ids: unknown) => (Array.isArray(ids) ? ids.map((id) => memberName(String(id))).join(", ") : "");
   switch (a.type) {
+    case "description_changed": return "actualizó la descripción";
+    case "tags_changed": return "cambió las etiquetas";
+    case "watchers_changed": return "cambió los seguidores";
+    case "comment_edited": return "editó un comentario";
+    case "comment_deleted": return "eliminó un comentario";
+    case "comment_resolved": return "cambió la resolución de un comentario";
+    case "startDate_changed": return "cambió la fecha de inicio";
+    case "timeEstimate_changed": return "cambió el tiempo estimado";
+    case "recurrence_changed": return "cambió la recurrencia";
+    case "archived_changed": return "cambió el archivo de la tarea";
     case "created":
       return d.fromTemplate ? `created this task from “${String(d.fromTemplate)}”` : "created this task";
     case "status_changed": {

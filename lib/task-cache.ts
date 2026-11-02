@@ -3,7 +3,7 @@ import { apiGet, apiSend } from "./api";
 import type { ListData, TaskWithRelations, TaskDetail } from "./queries";
 import type { TaskPatch } from "./tasks";
 
-type Edit = { taskId: string; patch: TaskPatch };
+type Edit = { taskId: string; patch: TaskPatch; expectedDescription?:string|null };
 type Snapshot = { list: ListData | undefined; detail: TaskDetail | undefined };
 const reconcile = new WeakMap<QueryClient, Set<string>>();
 function pending(qc: QueryClient, taskId: string) {
@@ -52,12 +52,14 @@ function optimistic<T extends TaskWithRelations>(task: T, patch: TaskPatch, stat
 export function taskUpdateOptions(qc: QueryClient, listId: string | undefined) {
   return {
     mutationKey:["task-write",listId] as const,
-    mutationFn:({taskId,patch}:Edit)=>apiSend<TaskWithRelations>(`/api/tasks/${taskId}`,"PATCH",patch),
-    onMutate:async ({taskId,patch}:Edit):Promise<Snapshot> => {
+    mutationFn:({taskId,patch,expectedDescription}:Edit)=>apiSend<TaskWithRelations>(`/api/tasks/${taskId}`,"PATCH",{...patch,...(expectedDescription!==undefined?{expectedDescription}:{})}),
+    onMutate:async (edit:Edit):Promise<Snapshot> => {
+      const {taskId,patch}=edit;
       await Promise.all([qc.cancelQueries({queryKey:["list",listId]}),qc.cancelQueries({queryKey:["task",taskId]})]);
       if (pending(qc,taskId)>1) markConcurrent(qc,taskId);
       const list = qc.getQueryData<ListData>(["list",listId]);
       const detail = qc.getQueryData<TaskDetail>(["task",taskId]);
+      if(patch.description!==undefined&&detail)edit.expectedDescription=detail.description;
       const statuses = list?.list.statuses ?? detail?.list.statuses ?? [];
       if (listId) qc.setQueryData<ListData>(["list",listId], old => old ? {...old,tasks:old.tasks.map(t=>
         t.id===taskId ? optimistic(t,patch,statuses) : {...t,subtasks:t.subtasks.map(s=>s.id===taskId ? {...s,

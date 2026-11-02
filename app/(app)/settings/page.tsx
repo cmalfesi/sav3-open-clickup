@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { accountRequest, PasswordForm } from '@/components/account-forms';
+import { ConnectionsSettings } from "@/components/connections-settings";
 import type { Grant, Resource, Role } from '@/lib/access-context';
 type Member = {
     id: string;
@@ -68,7 +69,8 @@ export default function Settings() {
     finally {
         setBusy(false);
     } }
-    return <main className="flex-1 overflow-y-auto p-5 md:p-8"><div className="mx-auto max-w-5xl"><p className="text-xs font-semibold uppercase tracking-wide text-cu-purple">SAV3 · Administración</p><h1 className="mt-2 text-2xl font-semibold">Configuración</h1><p className="mt-2 text-sm text-cu-text-secondary">Gestioná el ingreso y el acceso a tu equipo.</p><nav aria-label="Secciones de configuración" className="my-6 flex gap-2 border-b border-cu-border pb-3">{(admin ? [['users', 'Usuarios'], ['permissions', 'Privacidad de recursos'], ['account', 'Mi cuenta']] : [['account', 'Mi cuenta']]).map(([id, label]) => <button key={id} onClick={() => { setTab(id); setError(''); }} className={`${input} ${tab === id ? 'font-semibold text-cu-purple bg-cu-hover' : ''}`}>{label}</button>)}</nav>{error && <p role="alert" className="mb-4 rounded border border-red-300 p-3 text-sm text-red-600">{error}</p>}{message && <p role="status" className="mb-4 rounded bg-cu-hover p-3 text-sm">{message}</p>}
+    return <main className="flex-1 overflow-y-auto p-5 md:p-8"><div className="mx-auto max-w-5xl"><p className="text-xs font-semibold uppercase tracking-wide text-cu-purple">SAV3 · Administración</p><h1 className="mt-2 text-2xl font-semibold">Configuración</h1><p className="mt-2 text-sm text-cu-text-secondary">Gestioná el ingreso y el acceso a tu equipo.</p><nav aria-label="Secciones de configuración" className="my-6 flex flex-wrap gap-2 border-b border-cu-border pb-3">{(admin ? [['users', 'Usuarios'], ['permissions', 'Privacidad de recursos'], ['account', 'Mi cuenta'], ['connections', 'Conexiones LLM']] : [['account', 'Mi cuenta'], ['connections', 'Conexiones LLM']]).map(([id, label]) => <button key={id} onClick={() => { setTab(id); setError(''); }} className={`${input} ${tab === id ? 'font-semibold text-cu-purple bg-cu-hover' : ''}`}>{label}</button>)}</nav>{error && <p role="alert" className="mb-4 rounded border border-red-300 p-3 text-sm text-red-600">{error}</p>}{message && <p role="status" className="mb-4 rounded bg-cu-hover p-3 text-sm">{message}</p>}
+    {tab === 'connections' && <ConnectionsSettings />}
     {tab === 'account' && <><h2 className="mb-4 text-lg font-semibold">Tu contraseña</h2><PasswordForm /></>}
         {tab === 'users' && team && <><section className="rounded-xl border border-cu-border bg-cu-panel p-5"><h2 className="text-lg font-semibold">{editing ? 'Editar acceso' : 'Invitar a una persona'}</h2><p className="mt-2 text-sm leading-6 text-cu-text-secondary">Propietario y administrador gestionan el espacio completo. Miembro puede editar según sus permisos. Invitado solo puede ver. Asignar una tarea a alguien no le concede acceso automáticamente.</p><form className="mt-5 space-y-4" onSubmit={e => { e.preventDefault(); operation(async () => { if (editing) {
             await accountRequest('/api/team/users', { userId: editing.id, enabled: !!editing.enabled, role, scopeAll, grants }, 'PATCH');

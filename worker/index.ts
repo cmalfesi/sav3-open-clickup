@@ -1,6 +1,8 @@
 import handler from "vinext/server/fetch-handler";
 import { runWithConnectorBinding } from "../lib/connector-context";
 import type { ConnectorBinding } from "../lib/connector-contract.mjs";
+import { integrationRoute } from "../lib/integration-access";
+import { changeTargets, recordChanges, changesResponse } from "../lib/collaboration";
 import { publicAccess, privateResponse } from "../lib/public-access";
 
 import { loadActor, teamRoute, isPublicAuth } from "../lib/team-service";
@@ -15,7 +17,11 @@ const worker = {
       return env.ASSETS?.fetch(request) ?? new Response("Not found", { status: 404 });
     }
     if (!env.DB) return privateResponse(Response.json({error:"Espacio no disponible."},{status:503}));
-    const actor = await loadActor(env.DB, request);
+    const loaded = await loadActor(env.DB, request);
+    const isMcp=url.pathname==='/mcp'||url.pathname==='/api/integrations/mcp';
+    const actor=loaded?{...loaded,channel:(isMcp?'mcp':loaded.kind==='token'?'api':'web') as 'mcp'|'api'|'web'}:null;
+    const integration=await integrationRoute(request,env.DB,actor);
+    if(integration)return privateResponse(integration);
     const teamResponse = await teamRoute(request, env.DB, actor);
     if (teamResponse) return privateResponse(teamResponse);
     if (access !== "page" && !isPublicAuth(url.pathname)) {
@@ -28,6 +34,8 @@ const worker = {
       if (url.pathname === "/api/restore" && request.method === "GET" && !actor.access.admin) return privateResponse(Response.json({complete:true,cursor:1,total:1}));
       if (url.pathname.startsWith("/restored-files/")) return privateResponse(await env.ASSETS?.fetch(request) ?? new Response("Not found",{status:404}));
     }
+    if(url.pathname==='/api/changes'&&actor&&request.method==='GET')return privateResponse(await changesResponse(request,env.DB,actor));
+    const targets=actor?await changeTargets(request,env.DB,actor):[];
     let binding = ctx.props?.CONNECTORS;
     // Local preview emulates the same request-scoped capability. This branch and
     // the auxiliary service binding are absent from production builds.
@@ -49,6 +57,7 @@ const worker = {
     }
     const run = () => runWithConnectorBinding(binding, () => handler.fetch(request, env, ctx));
     const response = actor ? await withActor(actor, run) : await run();
+    if(actor&&targets.length)await recordChanges(env.DB,actor,targets,response,request);
     return privateResponse(response);
   },
 };

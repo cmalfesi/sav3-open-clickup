@@ -35,7 +35,18 @@ export async function resourceGraph(db: D1Database): Promise<Resource[]> {
 }
 export async function loadActor(db: D1Database, req: Request): Promise<Actor | null> {
     let user: User | null = null, role: Role = "GUEST", scopeAll = false, kind: Actor["kind"] = "native", sessionId: string | undefined;
-    const raw = cookieToken(req);
+    let tokenScope: Actor["tokenScope"];
+    const authorization = req.headers.get("Authorization");
+    if(authorization) {
+        const path=new URL(req.url).pathname;
+        if(!(path==='/mcp'||path==='/api/integrations/mcp'||/^\/api\/(tasks|comments|lists|search)(\/|$)/.test(path)))return null;
+        const bearer = /^Bearer (sav3_[a-f0-9]{64})$/.exec(authorization)?.[1];
+        if(!bearer)return null;
+        const linked=await db.prepare(`SELECT ${userColumns},m.role,a.scopeAll,t.scope FROM IntegrationToken t JOIN User u ON u.id=t.userId JOIN AccountAccess a ON a.userId=u.id AND a.enabled=1 JOIN WorkspaceMember m ON m.userId=u.id AND m.workspaceId=? WHERE t.tokenHash=? AND t.revoked=0 AND t.expiresAt>?`).bind(WORKSPACE,digest(bearer),Date.now()).first<User & {role:Role;scopeAll:number;scope:"read"|"write"}>();
+        if(!linked)return null;
+        user=linked;role=linked.role;scopeAll=!!linked.scopeAll;kind="token";tokenScope=linked.scope;
+    }
+    const raw = !user ? cookieToken(req) : undefined;
     if (raw && /^[a-f0-9]{64}$/.test(raw)) {
         sessionId = digest(raw);
         const local = await db.prepare(`SELECT ${userColumns},m.role,a.scopeAll FROM Session s JOIN User u ON u.id=s.userId JOIN AccountAccess a ON a.userId=u.id JOIN WorkspaceMember m ON m.userId=u.id AND m.workspaceId=? WHERE s.id=? AND s.expiresAt>? AND a.enabled=1`).bind(WORKSPACE, sessionId, new Date().toISOString()).first<User & {
@@ -57,8 +68,13 @@ export async function loadActor(db: D1Database, req: Request): Promise<Actor | n
             ownerKey: string;
             complete: number;
         }>();
-        if (!state?.complete || state.ownerKey !== id)
-            return null;
+        if (!state?.complete)return null;
+        if(state.ownerKey!==id) {
+            const linked=await db.prepare(`SELECT ${userColumns},m.role,a.scopeAll FROM User u JOIN AccountAccess a ON a.userId=u.id AND a.enabled=1 JOIN WorkspaceMember m ON m.userId=u.id AND m.workspaceId=? WHERE lower(u.email)=? AND u.passwordHash IS NOT NULL`).bind(WORKSPACE,email).first<User & {role:Role;scopeAll:number}>();
+            if(!linked || linked.role==="OWNER")return null;
+            user=linked;role=linked.role;scopeAll=!!linked.scopeAll;
+        }
+        if(!user) {
         // The existing Site owner is the only native identity that can bootstrap.
         user = await db.prepare(`SELECT ${userColumns},a.enabled,a.scopeAll FROM User u JOIN WorkspaceMember m ON m.userId=u.id LEFT JOIN AccountAccess a ON a.userId=u.id WHERE m.workspaceId=? AND m.role='OWNER' AND lower(u.email)=?`).bind(WORKSPACE, email).first<User & {enabled:number|null;scopeAll:number|null}>();
         if (!user) {
@@ -73,6 +89,7 @@ export async function loadActor(db: D1Database, req: Request): Promise<Actor | n
         scopeAll = true;
         sessionId = undefined;
         if ((user as User & {enabled?:number;scopeAll?:number}).enabled !== 1 || (user as User & {scopeAll?:number}).scopeAll !== 1) await db.prepare('INSERT INTO AccountAccess (userId,enabled,scopeAll) VALUES (?,1,1) ON CONFLICT(userId) DO UPDATE SET enabled=1,scopeAll=1').bind(user!.id).run();
+        }
     }
     // Fresh authorization snapshot in one round trip; never cache grants across requests.
     const accessRows = await db.batch([...graphStatements(db),
@@ -84,7 +101,7 @@ export async function loadActor(db: D1Database, req: Request): Promise<Actor | n
     const policies = accessRows[5].results as {resourceType:string;resourceId:string}[];
     const safeUser = { id: user!.id, email: user!.email, name: user!.name, color: user!.color, avatarUrl: user!.avatarUrl };
     const clientId = req.headers.get("x-sav3-client") ?? "";
-    return { clientId: /^[a-f0-9-]{36}$/i.test(clientId) ? clientId : undefined, user: safeUser, role, workspaceId: WORKSPACE, kind, sessionId, access: new Access(role, scopeAll, resources, grants, policies.map(p => `${p.resourceType}:${p.resourceId}`)) };
+    return { tokenScope, clientId: /^[a-f0-9-]{36}$/i.test(clientId) ? clientId : undefined, user: safeUser, role, workspaceId: WORKSPACE, kind, sessionId, access: new Access(role, scopeAll, resources, grants, policies.map(p => `${p.resourceType}:${p.resourceId}`)) };
 }
 async function audit(db: D1Database, a: Actor, action: string, target: string) { await db.prepare('INSERT INTO AccessAudit (id,actorId,action,targetId,createdAt) VALUES (?,?,?,?,?)').bind(randomUUID(), a.user.id, action, target, Date.now()).run(); }
 async function throttle(db: D1Database, key: string, limit = 12) {

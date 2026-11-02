@@ -6,9 +6,8 @@ import {
   useQueryClient,
   keepPreviousData,
 } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { taskUpdateOptions, putSavedTask } from "./task-cache";
-import { apiGet, apiSend, mutationSource } from "@/lib/api";
+import { apiGet, apiSend } from "@/lib/api";
 import type { ListData, TaskWithRelations, UserLite, WorkspaceTree } from "@/lib/queries";
 
 export type Bootstrap = { currentUser: UserLite; workspace: WorkspaceTree; favorites: string[]; authorization:{role:string;admin:boolean} };
@@ -27,27 +26,8 @@ export function useToggleFavorite() {
 
 /** Subscribe to the SSE stream and invalidate caches so collaborators' changes appear live. */
 export function useRealtime() {
-  const qc = useQueryClient();
-  useEffect(() => {
-    const es = new EventSource("/api/stream");
-    es.onmessage = (e) => {
-      try {
-        const event = JSON.parse(e.data) as { type: string; listId?: string; clientId?: string };
-        if (event.clientId && event.clientId === mutationSource()) return;
-        if (event.type === "list" && event.listId) {
-          qc.invalidateQueries({ queryKey: ["list", event.listId] });
-          qc.invalidateQueries({ queryKey: ["task"] });
-          qc.invalidateQueries({ queryKey: ["my-tasks"] });
-        } else if (event.type === "bootstrap") {
-          qc.invalidateQueries({ queryKey: ["bootstrap"] });
-        }
-        qc.invalidateQueries({ queryKey: ["notifications"] });
-      } catch {
-        /* ignore malformed event */
-      }
-    };
-    return () => es.close();
-  }, [qc]);
+  // Other-user changes are offered by ChangesNotice, never applied over drafts.
+  // Inbox has independent polling; it does not require a process-local SSE event.
 }
 
 export type NotificationItem = {

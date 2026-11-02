@@ -1,9 +1,11 @@
+import { actor } from "@/lib/access-context";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 import { userSelect } from "@/lib/queries";
 import { ApiError, readJson, route } from "@/lib/api-helpers";
+import { notifyNewMentions } from "@/lib/notifications";
 import { publish } from "@/lib/events";
 
 type Ctx = { params: Promise<{ commentId: string }> };
@@ -41,6 +43,11 @@ export const PATCH = route(async (req, { params }: Ctx) => {
     data,
     include: { user: { select: userSelect }, reactions: true },
   });
+  if(body!==undefined && body!==existing.body) {
+    await prisma.activity.create({data:{taskId:existing.taskId,userId:user.id,type:'comment_edited',data:{commentId,source:actor().channel??'web',before:existing.body,after:body}}});
+    await notifyNewMentions(existing.taskId,user.id,existing.body,body);
+  }
+  if(resolved!==undefined && resolved!==existing.resolved)await prisma.activity.create({data:{taskId:existing.taskId,userId:user.id,type:'comment_resolved',data:{commentId,resolved,source:actor().channel??'web'}}});
   publish({ type: "list", listId: existing.task.listId });
   return NextResponse.json(comment);
 });
@@ -51,6 +58,7 @@ export const DELETE = route(async (_req, { params }: Ctx) => {
   const existing = await load(commentId);
   if (existing.userId !== user.id) throw new ApiError(403, "You can only delete your own comments");
 
+  await prisma.activity.create({data:{taskId:existing.taskId,userId:user.id,type:'comment_deleted',data:{commentId,source:actor().channel??'web',before:existing.body}}});
   await prisma.comment.delete({ where: { id: commentId } });
   publish({ type: "list", listId: existing.task.listId });
   return NextResponse.json({ ok: true });

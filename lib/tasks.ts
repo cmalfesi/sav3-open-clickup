@@ -1,10 +1,10 @@
-import { actorOrNull } from "./access-context";
+import { AccessError, actorOrNull } from "./access-context";
 import { prisma, getD1 } from "@/lib/db";
 import { readTaskRelations } from "./list-task-reader";
 import { Priority, Prisma } from "@/lib/generated/prisma/client";
 import { visibleTask } from "@/lib/queries";
 import { publish } from "@/lib/events";
-import { createNotifications } from "@/lib/notifications";
+import { createNotifications, notifyNewMentions } from "@/lib/notifications";
 import { nextOccurrence, type Recurrence } from "@/lib/recurrence";
 
 export async function createTask(input: {
@@ -50,9 +50,10 @@ export async function createTask(input: {
   });
 
   await prisma.activity.create({
-    data: { taskId: task.id, userId: input.createdById, type: "created", data: {} },
+    data: { taskId: task.id, userId: input.createdById, type: "created", data: {source:actorOrNull()?.channel??'web'} },
   });
 
+  if(input.createdById && input.assigneeIds?.length)await createNotifications({recipientIds:input.assigneeIds,actorId:input.createdById,taskId:task.id,type:'assigned',body:'te asignó una tarea'});
   publish({ type: "list", listId: input.listId, clientId: actorOrNull()?.clientId });
   return visibleTask(await readTaskRelations(getD1(),task.id));
 }
@@ -60,6 +61,7 @@ export async function createTask(input: {
 export type TaskPatch = {
   name?: string;
   description?: string | null;
+  expectedDescription?: string | null;
   statusId?: string;
   priority?: Priority | null;
   position?: number;
@@ -84,6 +86,7 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
   });
   if (!existing) throw new Error("Task not found");
 
+  if(patch.description!==undefined&&patch.expectedDescription!==undefined&&patch.expectedDescription!==existing.description)throw new AccessError(409,'La descripción cambió desde que la abriste. Conservamos tu borrador; revisá la versión actual antes de volver a guardar.');
   const data: Record<string, unknown> = {};
   if (patch.name !== undefined) data.name = patch.name;
   if (patch.description !== undefined) data.description = patch.description;
@@ -111,6 +114,18 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
     if (newDue !== oldDue) activityLog.push({ type: "due_changed", data: { dueDate: newDue } });
   }
 
+  for(const key of ['description','startDate','timeEstimate','recurrence','archived','position'] as const) {
+    if(patch[key]===undefined)continue;
+    const before=existing[key] instanceof Date ? (existing[key] as Date).toISOString() : existing[key];
+    const after=key==='startDate'&&patch[key]?new Date(String(patch[key])).toISOString():patch[key];
+    if(before!==after)activityLog.push({type:key==='description'?'description_changed':key+'_changed',data:{field:key,before,after}});
+  }
+  for(const key of ['tagIds','watcherIds'] as const) {
+    if(patch[key]===undefined)continue;
+    const before=key==='tagIds'?existing.tags.map(t=>t.tagId):existing.watchers.map(w=>w.userId);
+    const after=patch[key]!;
+    if(JSON.stringify([...before].sort())!==JSON.stringify([...after].sort()))activityLog.push({type:key==='tagIds'?'tags_changed':'watchers_changed',data:{before,after}});
+  }
   // status change → set completedAt + log
   let becameDone = false;
   if (patch.statusId !== undefined && patch.statusId !== existing.statusId) {
@@ -162,16 +177,17 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
   }
 
   const task = await prisma.task.update({
-    where: { id: taskId },
+    where: { id: taskId, ...(patch.description!==undefined&&patch.expectedDescription!==undefined?{description:patch.expectedDescription}:{}) },
     data,
   });
 
   if (activityLog.length) {
     await prisma.activity.createMany({
-      data: activityLog.map((a) => ({ taskId, userId: actorId, type: a.type, data: a.data as Prisma.InputJsonValue })),
+      data: activityLog.map((a) => ({ taskId, userId: actorId, type: a.type, data: {...a.data,source:actorOrNull()?.channel??'web'} as Prisma.InputJsonValue })),
     });
   }
 
+  if(actorId && patch.description!==undefined)await notifyNewMentions(taskId,actorId,existing.description??'',patch.description??'');
   // completing a recurring task spawns the next occurrence
   if (becameDone && existing.recurrence) {
     await spawnNextOccurrence(existing, actorId);
@@ -185,7 +201,7 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
       actorId,
       taskId,
       type: "assigned",
-      body: "assigned you a task",
+      body: "te asignó una tarea",
     });
   }
   return visibleTask(await readTaskRelations(getD1(),task.id));

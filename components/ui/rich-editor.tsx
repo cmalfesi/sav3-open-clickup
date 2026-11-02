@@ -4,7 +4,7 @@ import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Mention from "@tiptap/extension-mention";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useId } from "react";
 import {
   Bold,
   Italic,
@@ -15,6 +15,7 @@ import {
   Heading2,
   Quote,
 } from "lucide-react";
+import { markDraft } from "@/lib/drafts";
 import { cn } from "@/lib/utils";
 import { createMentionSuggestion, type MentionItem } from "@/lib/mention-suggestion";
 
@@ -30,7 +31,7 @@ export function RichEditor({
 }: {
   content: string;
   onChange?: (html: string) => void;
-  onBlur?: (html: string) => void;
+  onBlur?: (html: string) => void | Promise<unknown>;
   placeholder?: string;
   className?: string;
   toolbar?: boolean;
@@ -39,6 +40,9 @@ export function RichEditor({
 }) {
   // ref so the mention suggestion (created once) always reads the latest list;
   // synced in an effect — the suggestion only reads it when the user types "@".
+  const draftId=useId(),dirty=useRef(false),baseline=useRef(content);
+  const normalize=(s:string)=>s==='<p></p>'?'':s;
+  useEffect(()=>()=>markDraft(draftId,false),[draftId]);
   const mentionsRef = useRef<MentionItem[]>(mentions ?? []);
   useEffect(() => {
     mentionsRef.current = mentions ?? [];
@@ -63,13 +67,14 @@ export function RichEditor({
     editorProps: {
       attributes: { class: cn("rich min-h-[60px] px-3 py-2 outline-none", className) },
     },
-    onUpdate: ({ editor }) => onChange?.(editor.getHTML()),
-    onBlur: ({ editor }) => onBlur?.(editor.getHTML()),
+    onUpdate: ({ editor }) => { dirty.current=normalize(editor.getHTML())!==normalize(baseline.current);markDraft(draftId,dirty.current);onChange?.(editor.getHTML()); },
+    onBlur: ({ editor }) => {if(dirty.current&&onBlur){const html=editor.getHTML();void Promise.resolve(onBlur(html)).then(()=>{if(editor.getHTML()===html){baseline.current=html;dirty.current=false;markDraft(draftId,false);}}).catch(()=>{/* Keep the draft when saving fails. */});}},
   });
 
   // keep external content in sync when switching tasks
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
+    if (editor && !dirty.current && content !== editor.getHTML()) {
+      baseline.current=content;
       editor.commands.setContent(content, { emitUpdate: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
