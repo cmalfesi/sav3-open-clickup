@@ -1,64 +1,74 @@
-import {z} from 'zod';
-import {prisma} from '@/lib/db';
-import {requireUser} from '@/lib/auth';
-import {requireRole} from '@/lib/permissions';
-import {getWorkspaceTree,getTaskDetail} from '@/lib/queries';
-import {createTask,updateTask} from '@/lib/tasks';
-import {POST as restoreStep} from '@/app/api/restore/route';
-
-const properties={list_id:{type:'string'},task_id:{type:'string'},name:{type:'string'},description:{type:'string'},status_id:{type:'string'},priority:{type:'string',enum:['URGENT','HIGH','NORMAL','LOW']},parent_id:{type:'string'},query:{type:'string'},body:{type:'string'}};
-const definitions=[
- {name:'prepare_workspace',description:'Prepara la copia privada del respaldo en lotes reanudables. Repetir mientras complete sea false.',keys:[],required:[]},
- {name:'get_workspace',description:'Consulta espacios, listas, estados, miembros y cantidades del laboratorio privado.',keys:[],required:[]},
- {name:'search_tasks',description:'Busca tareas del laboratorio por texto y/o lista, hasta 100 resultados.',keys:['query','list_id'],required:[]},
- {name:'get_task',description:'Lee una tarea con descripción, comentarios, campos y adjuntos.',keys:['task_id'],required:['task_id']},
- {name:'create_task',description:'Crea una tarea en la copia de ensayo, sin modificar ClickUp original.',keys:['list_id','name','description','status_id','priority','parent_id'],required:['list_id','name']},
- {name:'update_task',description:'Actualiza nombre, descripción, estado o prioridad de una tarea del laboratorio.',keys:['task_id','name','description','status_id','priority'],required:['task_id']},
- {name:'add_comment',description:'Agrega un comentario de texto seguro a una tarea de la copia.',keys:['task_id','body'],required:['task_id','body']},
-];
+import { z } from 'zod';
+import { prisma } from '@/lib/db';
+import { actor, AccessError } from '@/lib/access-context';
+import { requireRole } from '@/lib/permissions';
+import { getWorkspaceTree, getTaskDetail } from '@/lib/queries';
+import { createTask, updateTask } from '@/lib/tasks';
+import { createComment } from '@/lib/comments';
+import { POST as restoreStep } from '@/app/api/restore/route';
+const text=z.string().max(200000),id=z.string().min(1).max(200);
 const schemas={
- prepare_workspace:z.object({}),get_workspace:z.object({}),
- search_tasks:z.object({query:z.string().max(300).optional(),list_id:z.string().optional()}),
- get_task:z.object({task_id:z.string().min(1)}),
- create_task:z.object({list_id:z.string().min(1),name:z.string().trim().min(1).max(2000),description:z.string().optional(),status_id:z.string().optional(),priority:z.enum(['URGENT','HIGH','NORMAL','LOW']).optional(),parent_id:z.string().optional()}),
- update_task:z.object({task_id:z.string().min(1),name:z.string().trim().min(1).optional(),description:z.string().optional(),status_id:z.string().optional(),priority:z.enum(['URGENT','HIGH','NORMAL','LOW']).optional()}),
- add_comment:z.object({task_id:z.string().min(1),body:z.string().trim().min(1).max(20000)}),
+ prepare_workspace:z.object({}).strict(), get_workspace:z.object({}).strict(),
+ search_tasks:z.object({query:z.string().max(300).optional(),list_id:id.optional()}).strict(),
+ get_task:z.object({task_id:id}).strict(),
+ create_task:z.object({list_id:id,name:z.string().trim().min(1).max(2000),description:text.optional(),status_id:id.optional(),priority:z.enum(['URGENT','HIGH','NORMAL','LOW']).optional(),parent_id:id.optional(),mention_user_ids:z.array(id).max(100).optional()}).strict(),
+ update_task:z.object({task_id:id,expected_description:text.nullable().optional(),name:z.string().trim().min(1).max(2000).optional(),description:text.optional(),status_id:id.optional(),priority:z.enum(['URGENT','HIGH','NORMAL','LOW']).nullable().optional(),due_date:z.string().datetime().nullable().optional(),start_date:z.string().datetime().nullable().optional(),assignee_ids:z.array(id).max(100).optional(),mention_user_ids:z.array(id).max(100).optional()}).strict(),
+ add_comment:z.object({task_id:id,body:text.min(1),parent_id:id.optional(),mention_user_ids:z.array(id).max(100).optional()}).strict(),
 };
-function safeText(s:string){return '<p>'+s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'</p><p>')+'</p>'}
-async function call(name:string,input:unknown){
- if(!(name in schemas))throw new Error('Unknown tool');
+const descriptions:Record<keyof typeof schemas,string>={prepare_workspace:'Solo administradores: reanuda la importación del respaldo.',get_workspace:'Consulta los espacios y listas permitidos para tu usuario.',search_tasks:'Busca hasta 100 tareas visibles para tu usuario.',get_task:'Lee una tarea permitida con su contenido y actividad.',create_task:'Crea una tarea en una lista donde tenés permiso de edición.',update_task:'Edita título, descripción, estado, prioridad, fechas y responsables. description reemplaza el texto; leé antes la tarea y enviá expected_description con el HTML leído para detectar conflictos. mention_user_ids agrega menciones a la descripción.',add_comment:'Agrega un comentario o respuesta. mention_user_ids notifica a los usuarios indicados si tienen acceso.'};
+const safe=(s:string)=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+async function content(s:string,mentions:string[]=[]){
+ const users=mentions.length?await prisma.user.findMany({where:{id:{in:mentions}},select:{id:true,name:true}}):[];
+ if(users.length!==new Set(mentions).size)throw new AccessError(400,'Hay una mención inválida.');
+ return '<p>'+safe(s).replace(/\n/g,'</p><p>')+'</p>'+users.map(u=>`<p><span data-type="mention" data-id="${safe(u.id)}" class="mention">@${safe(u.name)}</span></p>`).join('');
+}
+export async function callTool(name:string,input:unknown){
+ const a=actor();
+ if(!Object.hasOwn(schemas,name))throw new AccessError(400,'Herramienta desconocida.');
+ const write=['prepare_workspace','create_task','update_task','add_comment'].includes(name);
+ if(write&&(a.role==='GUEST'||a.tokenScope==='read'))throw new AccessError(403,'Esta conexión solo permite lectura.');
  if(name==='prepare_workspace'){
-  let result:{complete?:boolean;cursor?:number;total?:number;error?:string}={};
-  for(let i=0;i<10;i++){const response=await restoreStep();result=await response.json() as typeof result;if(!response.ok)throw new Error(result.error||'Restore failed');if(result.complete)break;}
-  return result;
+  await requireRole('ADMIN');let result:{complete?:boolean;error?:string}={};
+  for(let i=0;i<10;i++){const response=await restoreStep();result=await response.json() as typeof result;if(!response.ok)throw new Error(result.error||'Error de importación');if(result.complete)break;}return result;
  }
- const user=await requireUser();
- if(name==='get_workspace')return {workspace:await getWorkspaceTree(),tasks:await prisma.task.count(),comments:await prisma.comment.count()};
- if(name==='search_tasks'){const a=schemas.search_tasks.parse(input);return prisma.task.findMany({where:{...(a.list_id?{listId:a.list_id}:{}),...(a.query?{name:{contains:a.query}}:{}),archived:false},take:100,select:{id:true,name:true,listId:true,status:true,priority:true,dueDate:true}})}
- if(name==='get_task'){const a=schemas.get_task.parse(input);const t=await getTaskDetail(a.task_id);if(!t)throw new Error('Task not found');return t;}
+ if(name==='get_workspace'){
+  schemas.get_workspace.parse(input);const visible=a.access.resources('TASK').filter(t=>a.access.can('TASK',t.id));
+  return {workspace:await getWorkspaceTree(),tasks:visible.length};
+ }
+ if(name==='search_tasks'){
+  const p=schemas.search_tasks.parse(input);
+  if(p.list_id&&!a.access.visibleList(p.list_id))throw new AccessError(403,'Sin acceso a la lista.');
+  const tasks=await prisma.task.findMany({where:{archived:false,...(p.list_id?{listId:p.list_id}:{}),...(p.query?{name:{contains:p.query}}:{})},select:{id:true,name:true,listId:true,status:true,priority:true,dueDate:true},orderBy:{updatedAt:'desc'}});
+  return tasks.filter(t=>a.access.can('TASK',t.id)).slice(0,100);
+ }
+ if(name==='get_task'){const p=schemas.get_task.parse(input);a.access.assert('TASK',p.task_id);return getTaskDetail(p.task_id);}
  await requireRole('MEMBER');
  if(name==='create_task'){
-  const a=schemas.create_task.parse(input);if(a.status_id){const s=await prisma.status.findUnique({where:{id:a.status_id}});if(s?.listId!==a.list_id)throw new Error('Status belongs to another list');}
-  if(a.parent_id){const p=await prisma.task.findUnique({where:{id:a.parent_id}});if(p?.listId!==a.list_id)throw new Error('Parent belongs to another list');}
-  const t=await createTask({listId:a.list_id,name:a.name,statusId:a.status_id,priority:a.priority,parentId:a.parent_id,createdById:user.id});
-  if(a.description)await updateTask(t.id,{description:safeText(a.description)},user.id);return {id:t.id,name:t.name,listId:t.listId};
+  const p=schemas.create_task.parse(input);a.access.assert('LIST',p.list_id,'EDIT');
+  if(p.status_id){const s=await prisma.status.findUnique({where:{id:p.status_id}});if(s?.listId!==p.list_id)throw new AccessError(400,'Estado de otra lista.');}
+  if(p.parent_id){a.access.assert('TASK',p.parent_id,'EDIT');const t=await prisma.task.findUnique({where:{id:p.parent_id}});if(t?.listId!==p.list_id)throw new AccessError(400,'Tarea padre de otra lista.');}
+  const description=p.description!==undefined?await content(p.description,p.mention_user_ids):undefined;
+  const t=await createTask({listId:p.list_id,name:p.name,statusId:p.status_id,priority:p.priority,parentId:p.parent_id,createdById:a.user.id});
+  if(description)await updateTask(t.id,{description},a.user.id);return {id:t.id,name:t.name,listId:t.listId};
  }
  if(name==='update_task'){
-  const a=schemas.update_task.parse(input);if(a.status_id){const[t,s]=await Promise.all([prisma.task.findUnique({where:{id:a.task_id}}),prisma.status.findUnique({where:{id:a.status_id}})]);if(!t||s?.listId!==t.listId)throw new Error('Invalid list status');}
-  const t=await updateTask(a.task_id,{name:a.name,description:a.description===undefined?undefined:safeText(a.description),statusId:a.status_id,priority:a.priority},user.id);return {id:t.id,name:t.name,status:t.status};
+  const p=schemas.update_task.parse(input);a.access.assert('TASK',p.task_id,'EDIT');
+  if(p.status_id){const [t,s]=await Promise.all([prisma.task.findUnique({where:{id:p.task_id}}),prisma.status.findUnique({where:{id:p.status_id}})]);if(!t||s?.listId!==t.listId)throw new AccessError(400,'Estado de otra lista.');}
+  if(p.mention_user_ids?.length&&p.description===undefined)throw new AccessError(400,'Las menciones requieren una descripción.');
+  const t=await updateTask(p.task_id,{name:p.name,description:p.description===undefined?undefined:await content(p.description,p.mention_user_ids),expectedDescription:p.expected_description,statusId:p.status_id,priority:p.priority,dueDate:p.due_date,startDate:p.start_date,assigneeIds:p.assignee_ids},a.user.id);return {id:t.id,name:t.name,status:t.status};
  }
- const a=schemas.add_comment.parse(input);if(!await prisma.task.findUnique({where:{id:a.task_id}}))throw new Error('Task not found');return prisma.comment.create({data:{taskId:a.task_id,userId:user.id,body:safeText(a.body)}});
+ const p=schemas.add_comment.parse(input);a.access.assert('TASK',p.task_id,'COMMENT');return createComment(p.task_id,await content(p.body,p.mention_user_ids),p.parent_id);
 }
 export async function POST(req:Request){
  let rpc:{id?:string|number|null;method?:string;params?:{name?:string;arguments?:unknown}};
- try{rpc=await req.json() as typeof rpc}catch{return Response.json({jsonrpc:'2.0',id:null,error:{code:-32700,message:'Invalid JSON'}})}
+ try{rpc=await req.json() as typeof rpc;if(!rpc||Array.isArray(rpc)||typeof rpc!=='object')throw new Error();}catch{return Response.json({jsonrpc:'2.0',id:null,error:{code:-32700,message:'JSON inválido'}});}
  const id=rpc.id??null;
  if(rpc.method==='server/discover')return Response.json({jsonrpc:'2.0',id,result:{supportedVersions:['2026-07-28'],capabilities:{tools:{}}}});
- if(rpc.method==='initialize')return Response.json({jsonrpc:'2.0',id,result:{protocolVersion:'2026-07-28',serverInfo:{name:'sav3-open-clickup-lab',version:'1.0.0'},capabilities:{tools:{}}}});
- if(rpc.method==='tools/list')return Response.json({jsonrpc:'2.0',id,result:{tools:definitions.map(d=>({name:d.name,description:d.description,inputSchema:{type:'object',properties:Object.fromEntries(d.keys.map(k=>[k,properties[k as keyof typeof properties]])),required:d.required,additionalProperties:false}}))}});
+ if(rpc.method==='initialize')return Response.json({jsonrpc:'2.0',id,result:{protocolVersion:'2026-07-28',serverInfo:{name:'sav3-open-clickup',version:'1.1.0'},capabilities:{tools:{}}}});
+ if(rpc.method==='tools/list')return Response.json({jsonrpc:'2.0',id,result:{tools:Object.entries(schemas).map(([name,schema])=>({name,description:descriptions[name as keyof typeof schemas],inputSchema:z.toJSONSchema(schema)}))}});
  if(rpc.method==='tools/call'){
-  try{const result=await call(rpc.params?.name??'',rpc.params?.arguments??{});return Response.json({jsonrpc:'2.0',id,result:{content:[{type:'text',text:JSON.stringify(result)}]}})}
-  catch(e){return Response.json({jsonrpc:'2.0',id,result:{isError:true,content:[{type:'text',text:e instanceof Error?e.message:'Tool failed'}]}})}
+  try{return Response.json({jsonrpc:'2.0',id,result:{content:[{type:'text',text:JSON.stringify(await callTool(rpc.params?.name??'',rpc.params?.arguments??{}))}]}});}
+  catch(e){return Response.json({jsonrpc:'2.0',id,result:{isError:true,content:[{type:'text',text:e instanceof Error?e.message:'Error de herramienta'}]}});}
  }
- return Response.json({jsonrpc:'2.0',id,error:{code:-32601,message:'Method not found'}});
+ return Response.json({jsonrpc:'2.0',id,error:{code:-32601,message:'Método desconocido'}});
 }

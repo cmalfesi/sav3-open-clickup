@@ -11,7 +11,8 @@ type Ctx = { params: Promise<{ taskId: string }> };
 
 const patchSchema = z.object({
   name: z.string().trim().min(1).optional(),
-  description: z.string().nullish(),
+  description: z.string().max(200000).nullish(),
+  expectedDescription: z.string().max(200000).nullish(),
   statusId: z.string().optional(),
   priority: z.enum(["URGENT", "HIGH", "NORMAL", "LOW"]).nullish(),
   position: z.number().optional(),

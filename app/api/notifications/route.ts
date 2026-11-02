@@ -11,14 +11,14 @@ export const GET = route(async () => {
     prisma.notification.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
-      take: 30,
+      take: 200,
       include: {
         actor: { select: userSelect },
         task: { select: { id: true, name: true, listId: true } },
       },
     }),
-    prisma.notification.count({ where: { userId: user.id, read: false } }),
+    prisma.notification.groupBy({by:['taskId'],where:{userId:user.id,read:false},_count:{_all:true}}),
   ]);
   const visible=notifications.filter(n=>!n.task||actor().access.can("TASK",n.task.id));
-  return NextResponse.json({ notifications:visible, unread:actor().access.admin?unread:visible.filter(n=>!n.read).length });
+  return NextResponse.json({ notifications:visible, unread:unread.filter(n=>!n.taskId||actor().access.can('TASK',n.taskId)).reduce((sum,n)=>sum+n._count._all,0) });
 });

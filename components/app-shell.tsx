@@ -8,6 +8,7 @@ import { useBootstrap, useRealtime } from "@/lib/hooks";
 import { WorkspaceProvider } from "@/components/workspace-context";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { CommandPalette } from "@/components/command-palette";
+import { ChangesNotice } from "@/components/changes-notice";
 import { ShortcutsHelp } from "@/components/shortcuts-help";
 
 function isTyping(target: EventTarget | null): boolean {
@@ -113,6 +114,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+        <ChangesNotice />
         <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
       </div>
     </WorkspaceProvider>

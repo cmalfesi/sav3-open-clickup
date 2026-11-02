@@ -73,7 +73,11 @@ export async function getWorkspaceTree() {
   const a = actor();
   const visibleList = (l: (typeof workspace.spaces)[number]["lists"][number]) => { l._count.tasks = a.access.resources("TASK").filter(t=>t.listId===l.id&&a.access.can("TASK",t.id)).length; return a.access.visibleList(l.id); };
   workspace.spaces = workspace.spaces.map(s=>({...s,lists:s.lists.filter(visibleList),folders:s.folders.map(f=>({...f,lists:f.lists.filter(visibleList)})).filter(f=>f.lists.length>0)})).filter(s=>a.access.can("SPACE",s.id)||s.lists.length>0||s.folders.length>0);
-  if (!a.access.admin) workspace.members = workspace.members.filter(m=>m.userId===a.user.id);
+  if (!a.access.admin) {
+    const enabled=await getD1().prepare('SELECT userId FROM AccountAccess WHERE enabled=1').all<{userId:string}>();
+    const ids=new Set(enabled.results.map(u=>u.userId));
+    workspace.members=workspace.members.filter(m=>m.userId===a.user.id||ids.has(m.userId));
+  }
   return workspace;
 }
 
@@ -184,7 +188,7 @@ export async function getTaskDetail(taskId: string) {
   task.blockedBy=task.blockedBy.filter(d=>a.access.can("TASK",d.blockerId));
   task.blocking=task.blocking.filter(d=>a.access.can("TASK",d.blockedId));
   // Imported activity payloads may contain cross-resource names.
-  if(!a.access.admin) task.activities=[];
+  if(!a.access.admin) task.activities=task.activities.filter(x=>{const d=x.data as Record<string,unknown>|null;return ['web','mcp','api'].includes(String(d?.source));});
   return task;
 }
 

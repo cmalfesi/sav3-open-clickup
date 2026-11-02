@@ -1,64 +1,9 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { prisma } from "@/lib/db";
-import { requireRole } from "@/lib/permissions";
-import { userSelect } from "@/lib/queries";
-import { readJson, route } from "@/lib/api-helpers";
-import { extractMentionIds, createNotifications } from "@/lib/notifications";
-import { publish } from "@/lib/events";
-
-type Ctx = { params: Promise<{ taskId: string }> };
-const schema = z.object({
-  body: z.string().trim().min(1, "Comment cannot be empty"),
-  parentId: z.string().nullish(),
-});
-
-export const POST = route(async (req, { params }: Ctx) => {
-  const { taskId } = await params;
-  const { body, parentId } = await readJson(req, schema);
-  const { user } = await requireRole("MEMBER");
-  const comment = await prisma.comment.create({
-    data: { taskId, userId: user.id, body, parentId: parentId ?? null },
-    include: { user: { select: userSelect }, reactions: true },
-  });
-
-  const task = await prisma.task.findUnique({
-    where: { id: taskId },
-    select: {
-      listId: true,
-      assignees: { select: { userId: true } },
-      watchers: { select: { userId: true } },
-    },
-  });
-  if (task) publish({ type: "list", listId: task.listId });
-  await prisma.activity.create({
-    data: { taskId, userId: user.id, type: "commented", data: {} },
-  });
-
-  const mentioned = extractMentionIds(body);
-  if (mentioned.length) {
-    await createNotifications({
-      recipientIds: mentioned,
-      actorId: user.id,
-      taskId,
-      type: "mention",
-      body: "mentioned you in a comment",
-    });
-  }
-
-  // notify watchers + assignees (minus the commenter and anyone already @-mentioned)
-  if (task) {
-    const followers = [...task.assignees, ...task.watchers].map((f) => f.userId);
-    const recipients = [...new Set(followers)].filter((id) => !mentioned.includes(id));
-    if (recipients.length) {
-      await createNotifications({
-        recipientIds: recipients,
-        actorId: user.id,
-        taskId,
-        type: "comment",
-        body: "commented on a task you follow",
-      });
-    }
-  }
-  return NextResponse.json(comment, { status: 201 });
+import { z } from 'zod';
+import { route, readJson } from '@/lib/api-helpers';
+import { requireRole } from '@/lib/permissions';
+import { createComment } from '@/lib/comments';
+export const POST=route(async(req,{params}:{params:Promise<{taskId:string}>})=>{
+ await requireRole('MEMBER');const {taskId}=await params;
+ const {body,parentId}=await readJson(req,z.object({body:z.string().trim().min(1).max(200000),parentId:z.string().nullish()}));
+ return Response.json(await createComment(taskId,body,parentId),{status:201});
 });

@@ -250,3 +250,16 @@ principles, the end-to-end workflow, and the [decision records](docs/decisions/)
 [MIT](LICENSE) © Santiago Cotto and contributors.
 
 <sub>ClickUp® is a trademark of its respective owner; this is an independent project and is not affiliated with or endorsed by ClickUp.</sub>
+
+## Colaboración y conexiones personales
+
+En Configuración → Conexiones LLM, cada persona puede crear una conexión con vencimiento y alcance de lectura o escritura. Se muestra el token una sola vez; puede revocarse sin afectar otras conexiones. Los permisos sobre espacios, listas y tareas se verifican en cada operación.
+
+- ChatGPT/Codex: plugin del sitio, endpoint `/mcp`, identidad de Sites con el mismo email de la cuenta activada.
+- Otros clientes MCP HTTP que acepten un encabezado Bearer: `/api/integrations/mcp`.
+- API REST de tareas: `GET /api/tasks/{id}`, `POST /api/tasks`, `PATCH /api/tasks/{id}`, `POST /api/tasks/{id}/comments`, con `Authorization: Bearer <token personal>` y JSON. La API usa camelCase (`listId`, `statusId`); las herramientas MCP usan snake_case (`list_id`, `status_id`).
+- Al reemplazar una descripción por REST, enviar `expectedDescription` con el HTML previamente leído. En MCP usar `expected_description`. Un conflicto devuelve error y requiere revisar la versión actual.
+
+Inbox incluye menciones, asignaciones, comentarios y respuestas, con filtros y preferencias por usuario. Para mencionar a alguien en la web, seleccionar la persona en el menú `@`; en MCP, usar `mention_user_ids`. Solo se notifican destinatarios con acceso a la tarea. No hay envío de correo ni push.
+
+Los cambios de otros usuarios se ofrecen mediante un aviso de cinco segundos; «Actualizar» refresca los datos de la vista sin una recarga completa. Si se oculta, queda «Cambios pendientes». Los borradores o guardados en curso deben resolverse antes de actualizar. La detección consulta cambios cada cinco segundos mientras la página está visible.

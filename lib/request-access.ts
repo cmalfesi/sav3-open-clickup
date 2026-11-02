@@ -7,9 +7,11 @@ export async function authorizeResourceRequest(req: Request, db: D1Database, a: 
     const mutating = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
     if (mutating) {
         const origin = req.headers.get('Origin');
-        if (origin !== new URL(req.url).origin && !(a.kind === 'native' && !origin))
+        if (origin !== new URL(req.url).origin && !((a.kind === 'native' || a.kind === 'token') && !origin))
             denied();
     }
+    if(a.kind==="token" && a.tokenScope==="read" && mutating && path!=="/mcp" && path!=="/api/integrations/mcp")denied();
+    if(a.kind==="token" && !path.startsWith("/api/") && path!=="/mcp")denied();
     const access = a.access;
     const assert = (type: ResourceType, id: string, level: Level = mutating ? 'EDIT' : 'VIEW') => access.assert(type, id, level);
     const descendants = (type: ResourceType, id: string) => {
@@ -42,11 +44,7 @@ export async function authorizeResourceRequest(req: Request, db: D1Database, a: 
         assert('TASK', file.taskId, 'VIEW');
         return;
     }
-    if (parts[0] === 'mcp') {
-        if (!access.admin)
-            denied();
-        return;
-    }
+    if (path === '/mcp' || path === '/api/integrations/mcp') return;
     if (parts[0] !== 'api') {
         if (parts[0] === 'l' && parts[1]) {
             if (!access.visibleList(parts[1]))
@@ -65,7 +63,7 @@ export async function authorizeResourceRequest(req: Request, db: D1Database, a: 
             denied();
         return;
     }
-    if (kind === 'health' || kind === 'bootstrap' || kind === 'search') {
+    if (kind === 'health' || kind === 'bootstrap' || kind === 'search' || kind === 'changes') {
         if (mutating)
             denied();
         return;

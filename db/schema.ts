@@ -275,3 +275,17 @@ export const InvitationTable = sqliteTable("Invitation", {
 export const AuthThrottleTable = sqliteTable("AuthThrottle", { key: text("key").primaryKey(), count: integer("count").notNull().default(0), resetAt: integer("resetAt").notNull() });
 export const DashboardTable = sqliteTable("Dashboard", { id: text("id").primaryKey(), name: text("name").notNull(), sources: text("sources").notNull().default('[]'), createdBy: text("createdBy").notNull(), createdAt: integer("createdAt").notNull() });
 export const AccessAuditTable = sqliteTable("AccessAudit", { id: text("id").primaryKey(), actorId: text("actorId").notNull(), action: text("action").notNull(), targetId: text("targetId").notNull(), createdAt: integer("createdAt").notNull() });
+
+export const IntegrationTokenTable = sqliteTable("IntegrationToken", {
+ id: text("id").primaryKey(), userId: text("userId").notNull().references(() => UserTable.id, {onDelete:"cascade"}),
+ name: text("name").notNull(), tokenHash: text("tokenHash").notNull().unique(), scope: text("scope").notNull(),
+ createdAt: integer("createdAt").notNull(), expiresAt: integer("expiresAt").notNull(), revoked: integer("revoked").notNull().default(0)
+});
+export const NotificationPreferenceTable = sqliteTable("NotificationPreference", {
+ userId: text("userId").primaryKey().references(() => UserTable.id, {onDelete:"cascade"}),
+ mentions: integer("mentions").notNull().default(1), assigned: integer("assigned").notNull().default(1), comments: integer("comments").notNull().default(1)
+});
+export const ChangeEventTable = sqliteTable("ChangeEvent", {
+ seq: integer("seq").primaryKey({autoIncrement:true}), taskId: text("taskId"), listId: text("listId").notNull(),
+ actorId: text("actorId").notNull(), clientId: text("clientId"), createdAt: integer("createdAt").notNull()
+}, t => [index("ChangeEvent_list_seq").on(t.listId,t.seq)]);

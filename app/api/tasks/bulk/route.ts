@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { Priority } from "@/lib/generated/prisma/client";
+import { updateTask } from "@/lib/tasks";
 import { requireRole } from "@/lib/permissions";
 import { readJson, route } from "@/lib/api-helpers";
 import { publish } from "@/lib/events";
@@ -24,7 +24,7 @@ const schema = z.object({
 });
 
 export const POST = route(async (req) => {
-  await requireRole("MEMBER");
+  const {user}=await requireRole("MEMBER");
   const { ids, patch, delete: del } = await readJson(req, schema);
 
   if (del) {
@@ -33,27 +33,7 @@ export const POST = route(async (req) => {
     return NextResponse.json({ ok: true, deleted: ids.length });
   }
 
-  if (patch?.statusId || patch?.priority !== undefined) {
-    const data: Record<string, unknown> = {};
-    if (patch.statusId) {
-      data.statusId = patch.statusId;
-      const st = await prisma.status.findUnique({ where: { id: patch.statusId } });
-      data.completedAt = st?.type === "DONE" ? new Date() : null;
-    }
-    if (patch.priority !== undefined) data.priority = patch.priority as Priority | null;
-    await prisma.task.updateMany({ where: { id: { in: ids } }, data });
-  }
-
-  if (patch?.assigneeIds) {
-    await prisma.$transaction([
-      prisma.taskAssignee.deleteMany({ where: { taskId: { in: ids } } }),
-      prisma.taskAssignee.createMany({
-        data: ids.flatMap((taskId) =>
-          [...new Set(patch.assigneeIds!)].map((userId) => ({ taskId, userId })),
-        ),
-      }),
-    ]);
-  }
+  if(patch)for(const taskId of ids)await updateTask(taskId,patch,user.id);
 
   await notifyLists(ids);
   return NextResponse.json({ ok: true, updated: ids.length });

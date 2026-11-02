@@ -59,7 +59,9 @@ export type Actor = {
     };
     role: Role;
     workspaceId: string;
-    kind: "local" | "native";
+    kind: "local" | "native" | "token";
+    tokenScope?: "read" | "write";
+    channel?: "web" | "mcp" | "api";
     access: Access;
     sessionId?: string;
     clientId?: string;

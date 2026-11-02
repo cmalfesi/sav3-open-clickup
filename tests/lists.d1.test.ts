@@ -1,5 +1,5 @@
 import { Access,withActor,type Actor, type Grant } from "@/lib/access-context";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 import { PrismaD1 } from "@prisma/adapter-d1";
@@ -34,7 +34,7 @@ beforeAll(async () => {
   });
   const db = await emulator.getD1Database("DB");
   holder.db = db;
-  const schema = readFileSync("drizzle/0000_soft_butterfly.sql", "utf8");
+  const schema = readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort().map(f=>readFileSync('drizzle/'+f,'utf8')).join('\n--> statement-breakpoint\n');
   for (const sql of schema.split("--> statement-breakpoint")) {
     if (sql.trim()) await db.prepare(sql).run();
   }
@@ -76,7 +76,7 @@ describe("large lists on D1", () => {
       const saved=await updateTask(created.id,{priority:"HIGH",archived:true},"relation-user");
       expect(saved.priority).toBe("HIGH");expect(saved.archived).toBe(true);
       expect(saved.assignees[0].user.email).toBe("relation@example.com");
-      expect(await holder.client!.activity.count({where:{taskId:created.id}})).toBe(2);
+      expect(await holder.client!.activity.count({where:{taskId:created.id}})).toBe(3);
       await holder.client!.task.delete({where:{id:created.id}});
     });
   });
