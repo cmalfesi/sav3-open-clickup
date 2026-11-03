@@ -1,4 +1,5 @@
 "use client";
+import {useGroupCollapsed,useTaskExpanded} from "./personal-view";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -49,10 +50,12 @@ export function ListView({
   data,
   onOpenTask,
   groupBy = "status",
+  sorting=false,
 }: {
   data: ListData;
   onOpenTask: (taskId: string) => void;
   groupBy?: GroupBy;
+  sorting?:boolean;
 }) {
   const { list, tasks } = data;
   const statuses = list.statuses;
@@ -74,7 +77,7 @@ export function ListView({
   const clearSelect = () => setSelected(new Set());
 
   // drag-to-reorder is enabled only when grouping by status (cross-group = status change)
-  const sortable = groupBy === "status";
+  const sortable = groupBy === "status"&&!sorting;
   const [cols, setCols] = useState<Record<string, TaskWithRelations[]>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -263,7 +266,7 @@ function Group({
   onOpenTask: (id: string) => void;
   onUpdate: (taskId: string, patch: Record<string, unknown>) => void;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useGroupCollapsed(group.id);
   const [adding, setAdding] = useState(false);
   const [visible, setVisible] = useState(PAGE_SIZE);
 
@@ -274,7 +277,7 @@ function Group({
   return (
     <div className="border-b border-cu-border/70">
       <div className="flex items-center gap-2 px-3 py-2">
-        <button onClick={() => setCollapsed((c) => !c)} className="text-cu-text-tertiary hover:text-cu-text">
+        <button aria-label={(collapsed?"Expandir ":"Comprimir ")+group.label} aria-expanded={!collapsed} onClick={() => setCollapsed((c) => !c)} className="text-cu-text-tertiary hover:text-cu-text">
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         <span
@@ -400,7 +403,7 @@ function TaskRow({
   handle?: React.ReactNode;
 }) {
   const isSelected = selected.has(task.id);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useTaskExpanded(task.id);
   const [renaming, setRenaming] = useState(false);
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setField = useSetFieldValue(task.listId);
@@ -452,6 +455,8 @@ function TaskRow({
           <span className="flex w-4 justify-center">
             {hasSubtasks ? (
               <button
+                aria-label={(expanded?"Comprimir subtareas de ":"Expandir subtareas de ")+task.name}
+                aria-expanded={expanded}
                 onClick={(e) => { e.stopPropagation(); setExpanded((x) => !x); }}
                 className="text-cu-text-tertiary hover:text-cu-text"
               >

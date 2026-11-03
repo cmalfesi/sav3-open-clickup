@@ -1,4 +1,5 @@
 "use client";
+import {useCollapsedGroups} from "./personal-view";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -40,10 +41,12 @@ export function BoardView({
   data,
   onOpenTask,
   groupBy = "status",
+  sorting=false,
 }: {
   data: ListData;
   onOpenTask: (id: string) => void;
   groupBy?: GroupBy;
+  sorting?:boolean;
 }) {
   const { list, tasks } = data;
   const statuses = list.statuses;
@@ -57,9 +60,9 @@ export function BoardView({
     [tasks, groupBy, statuses, members],
   );
 
-  const [columns, setColumns] = useState<Columns>(() => fromGroups(groups));
+  const [columns, setColumns] = useState<Columns>(() => fromGroups(groups,sorting));
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useCollapsedGroups();
   const statusById = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses]);
 
   function toggleCollapse(id: string) {
@@ -72,7 +75,7 @@ export function BoardView({
   }
 
   useEffect(() => {
-    if (!activeId) setColumns(fromGroups(groups));
+    if (!activeId) setColumns(fromGroups(groups,sorting));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groups]);
 
@@ -181,14 +184,14 @@ export function BoardView({
   );
 }
 
-function fromGroups(groups: TaskGroup[]): Columns {
+function fromGroups(groups: TaskGroup[],sorting=false): Columns {
   // dedupe: a task (e.g. with multiple assignees) lands in its first group only,
   // so dnd-kit sortable ids stay unique across columns.
   const cols: Columns = {};
   const seen = new Set<string>();
   for (const g of groups) {
     cols[g.id] = [];
-    for (const t of [...g.tasks].sort((a, b) => a.position - b.position)) {
+    for (const t of (sorting?g.tasks:[...g.tasks].sort((a, b) => a.position - b.position))) {
       if (seen.has(t.id)) continue;
       seen.add(t.id);
       cols[g.id].push(t);

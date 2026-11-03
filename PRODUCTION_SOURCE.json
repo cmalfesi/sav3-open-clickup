@@ -1,6 +1,6 @@
 {
-  "production_version": 13,
-  "production_commit": "e28aa10c6dff5d99c195cd7c3238bb6a1a8742c9",
+  "production_version": 14,
+  "production_commit": "079ff3cf606ed70cbeaaab095e8b8c10a10e9dcf",
   "base_upstream_commit": "fd92240fbcec674afed5096b61f9414d16d1b653",
   "runtime_code": "Identical to production; no production database export included.",
   "excluded": [
@@ -676,7 +676,7 @@
     },
     {
       "path": "components/views/board-view.tsx",
-      "sha256": "334c3cc1ec0baadb6c85b21f24d3174ff5c793a39473075c0f74718d7b6dfbdf"
+      "sha256": "e685360a018698d4ddeb09eead44356c398424964d533fe385f1547f22c175ed"
     },
     {
       "path": "components/views/bulk-bar.tsx",
@@ -684,7 +684,7 @@
     },
     {
       "path": "components/views/calendar-view.tsx",
-      "sha256": "c482356c106fbbe3f5c57ddc99d428d78da320ae271f7039bbdb13a2c2a1bc35"
+      "sha256": "d05ece0554f13c2db155a5f2c1a342872d68a9790869314eafd8feac4b6747e1"
     },
     {
       "path": "components/views/custom-field-cell.tsx",
@@ -704,15 +704,15 @@
     },
     {
       "path": "components/views/list-page.tsx",
-      "sha256": "5685e139328a4c0f2480300cdba4e62924d40360afcba84754afb03011d01178"
+      "sha256": "0875ec7121bee8017aec9c3ff2f5c1d75a0d51d31c008b527068af09027313d5"
     },
     {
       "path": "components/views/list-view.tsx",
-      "sha256": "d4b493ca57c37552f8f89bbbd03f935680a573bc2b21f1ce9bcaf266961aa85d"
+      "sha256": "59a9fb46435e016a5bdd7964b5a651ee4b45d65311afa6e5184a2688ff26f6f5"
     },
     {
       "path": "components/views/table-view.tsx",
-      "sha256": "9234fadbed6dac1aa444bbbe296db748949ffbcef7a21b440ab68af793bcdb7f"
+      "sha256": "04bc6405adfb8ba8c44a029eb6b726cb81a523a691c0f882d08df88a9d619d93"
     },
     {
       "path": "components/views/template-picker.tsx",
@@ -732,7 +732,7 @@
     },
     {
       "path": "db/schema.ts",
-      "sha256": "ea1cfc30f90eb346a138a78663d878ad71d306a2ecf56bb14e659864b8a9c10f"
+      "sha256": "11989716acc4b6d407d6be463e026b41cc74ee42773502abe4844d17bece190e"
     },
     {
       "path": "docs/decisions/0000-template.md",
@@ -820,7 +820,7 @@
     },
     {
       "path": "drizzle/meta/_journal.json",
-      "sha256": "cb1cee692ae75c52e3da27adb2fabca5c384209fcabe088006cccebc5e24717a"
+      "sha256": "fa05f99f16f717ba432e1610bd4d67b10d165ae7a00dd9b2a3f50b994a00695a"
     },
     {
       "path": "e2e/app.spec.ts",
@@ -852,7 +852,7 @@
     },
     {
       "path": "lib/api.ts",
-      "sha256": "a4a2ae29e4810667a85243500b0b95d8ffaf1e6ea5cf2a3576e3395b30f43ec1"
+      "sha256": "eb57dea5a5784f6c13914699aa9aec4f6b9a1c49ff23f9bb395595b716f3649b"
     },
     {
       "path": "lib/auth.ts",
@@ -928,7 +928,7 @@
     },
     {
       "path": "lib/public-access.ts",
-      "sha256": "8a0b6e06b0697ff6df4cecbb231580cc8bb95237e12f9d157fb11094f4638de8"
+      "sha256": "513f06fbb02269e3f18d257c5622f87176cf4571412aaabe5b4098643e55ead9"
     },
     {
       "path": "lib/queries.ts",
@@ -1216,7 +1216,7 @@
     },
     {
       "path": "worker/index.ts",
-      "sha256": "a2d859865b5d0a66564fced82a69aa2bb86ebca437a1a9be2dfb88d942ebbf6d"
+      "sha256": "09674feee7f4c8ce6d7cb0d6ef830cc9e9cc3dd78a1fa3adddd2351c6b39462e"
     },
     {
       "path": "docs/decisions/0012-restored-workspace-initial-render.md",
@@ -1381,13 +1381,53 @@
     {
       "path": "public/sav3-clickup-amber.svg",
       "sha256": "c294d493ccd95bd0a9343289b7fb72c8deb451b5624e2c7c4d75d7c5bc01dc80"
+    },
+    {
+      "path": "components/views/personal-view.tsx",
+      "sha256": "732624468863d573494042e93203c884b360c3a3258a6ff6bca616632429c3e6"
+    },
+    {
+      "path": "docs/decisions/0017-personal-view-preferences.md",
+      "sha256": "3b1fe8b2d7e037adbb10a013bb98d511a37ce68221c08e921c71eaa58648bb51"
+    },
+    {
+      "path": "docs/releases/14.md",
+      "sha256": "0d7ed2522ec2c9a3963163639df5716ad0d8d95db52319c8d34cb2cf5a03661b"
+    },
+    {
+      "path": "drizzle/0004_useful_dagger.sql",
+      "sha256": "9a0eb463720aabec68dd3bcf9ae50a18e2414b829fdbff894e034404fa4007e6"
+    },
+    {
+      "path": "drizzle/meta/0004_snapshot.json",
+      "sha256": "91421f847b33537a852212bd22bf0ad6398fa86e12207f25f80bab33f2dbebbb"
+    },
+    {
+      "path": "lib/view-preference-model.ts",
+      "sha256": "48e97932196366884e399bb2f186c6706693ad952f2e72513f0bba22a0ed0651"
+    },
+    {
+      "path": "lib/view-preference-queue.ts",
+      "sha256": "480fd559c066a04708d45211f1fdb22e22140c102a1c0ea9d72e83163072c559"
+    },
+    {
+      "path": "lib/view-preference-service.ts",
+      "sha256": "88d54c63b68ae4bae1291489806df860130468f50c028c29c2610b5e91d767a3"
+    },
+    {
+      "path": "tests/view-preferences.d1.test.ts",
+      "sha256": "302fd27880dd8efd56e7c9782f8984af14e9dfb15ebb61c01518d68463d289dc"
+    },
+    {
+      "path": "tests/view-preferences.test.ts",
+      "sha256": "947b3cfd1d47f962fc3027b2254fcc50f84024bbbf9ddf0979c936f2abc7b9d8"
     }
   ],
   "validation": {
-    "tests": 97,
+    "tests": 105,
     "typescript": "passed",
     "production_build": "passed",
-    "browser": "Real components with synthetic data: micro KPI layout and font fitting exercised on desktop. Authenticated production and physical touch-device verification pending.",
+    "browser": "Synthetic real-component QA: Backlog collapse and expanded subtasks survive leave/re-enter and full reload; two users isolated, List/Table independent, sort and last active tab restored; failure/retry exercised. Authenticated production UI and physical mobile checks pending.",
     "favicon": "Rendered and visually inspected; metadata and SVG/PNG/ICO/Apple assets provided."
   }
 }

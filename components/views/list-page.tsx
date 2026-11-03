@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { DashboardBuilder } from "@/components/dashboard/builder";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useSiteRouter as useRouter } from "@/lib/site-navigation";
 import {
@@ -27,7 +27,7 @@ import { useWorkspace } from "@/components/workspace-context";
 import { hasDrafts } from "@/lib/drafts";
 import { apiSend } from "@/lib/api";
 import { ViewType } from "@/lib/enums";
-import { EMPTY_VIEW_STATE, applyViewState, type ViewState } from "@/lib/view-state";
+import { applyViewState, type ViewState } from "@/lib/view-state";
 import { FilterMenu, SortMenu, GroupMenu } from "@/components/views/filter-sort";
 import { ListView } from "@/components/views/list-view";
 import { BoardView } from "@/components/views/board-view";
@@ -36,6 +36,8 @@ import { GanttView } from "@/components/views/gantt-view";
 import { TableView } from "@/components/views/table-view";
 import { TaskModal } from "@/components/task/task-modal";
 import { StatusManager } from "@/components/status/status-manager";
+import {PersonalView,usePersonalViews} from "./personal-view";
+import {viewStateFromConfig} from "@/lib/view-preference-model";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 
 const VIEW_ICON: Record<ViewType, React.ReactNode> = {
@@ -47,23 +49,8 @@ const VIEW_ICON: Record<ViewType, React.ReactNode> = {
   TABLE: <Table2 className="h-4 w-4" />,
 };
 
-function vsFromConfig(config: unknown): ViewState {
-  if (config && typeof config === "object") {
-    const c = config as Partial<ViewState>;
-    return {
-      filters: {
-        priorities: c.filters?.priorities ?? [],
-        assignees: c.filters?.assignees ?? [],
-        tags: c.filters?.tags ?? [],
-      },
-      sort: { field: c.sort?.field ?? null, dir: c.sort?.dir ?? "asc" },
-      groupBy: c.groupBy ?? "status",
-    };
-  }
-  return EMPTY_VIEW_STATE;
-}
-
-export function ListPage({ listId }: { listId: string }) {
+export function ListPage({ listId }: { listId: string }) {const {currentUser}=useWorkspace();return <ListPageContent key={currentUser.id+':'+listId} listId={listId}/>;}
+function ListPageContent({ listId }: { listId: string }) {
   const qc=useQueryClient();
   const [viewBusy,setViewBusy]=useState(false),[viewError,setViewError]=useState('');
   const { data, isLoading, error } = useList(listId);
@@ -79,36 +66,30 @@ export function ListPage({ listId }: { listId: string }) {
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [statusMgr, setStatusMgr] = useState(false);
   const [templatePicker, setTemplatePicker] = useState(false);
-  const [vs, setVs] = useState<ViewState>(EMPTY_VIEW_STATE);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const personal=usePersonalViews(listId);
 
   const views = data?.list.views ?? [];
   const activeView = views.find((v) => v.id === activeViewId) ?? views[0];
 
-  // initialize the active view + load its persisted config once data arrives
+  const presentation=activeView?personal.data?.views[activeView.id]??{}:{};
+  const vs=presentation.viewState??viewStateFromConfig(activeView?.config);
+  // Restore an explicit link first, then this user's last selected view.
   useEffect(() => {
-    if (!activeViewId && views.length) {
-      setActiveViewId((views.find(v=>v.id===searchParams.get("view"))??views[0]).id);
-      setVs(vsFromConfig(views[0].config));
+    if(!personal.loading&&personal.data&&views.length&&(!activeViewId||!views.some(v=>v.id===activeViewId))){
+      const view=views.find(v=>v.id===searchParams.get("view"))??views.find(v=>v.id===personal.data!.activeViewId)??views[0];
+      setActiveViewId(view.id);if(personal.data.activeViewId!==view.id)personal.update({views:{},activeViewId:view.id});
     }
-  }, [views, activeViewId]);
+  }, [views,activeViewId,personal.loading,personal.data,personal.update,searchParams]);
 
   function selectView(view: { id: string; config: unknown }) {
     if(activeView?.type==='DASHBOARD'&&hasDrafts()){setViewError('Guardá o descartá los cambios del dashboard antes de cambiar de vista.');return;}
     setViewError('');
     setActiveViewId(view.id);
     window.history.replaceState(null,"",pathname+"?view="+encodeURIComponent(view.id));
-    setVs(vsFromConfig(view.config)); // load — does NOT trigger a save
+    personal.update({views:{},activeViewId:view.id});
   }
 
-  function updateVs(next: ViewState) {
-    setVs(next);
-    if (!activeViewId) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      apiSend(`/api/views/${activeViewId}`, "PATCH", { config: next }).catch(() => {});
-    }, 500);
-  }
+  function updateVs(next:ViewState){if(activeView)personal.update({views:{[activeView.id]:{viewState:next}}});}
 
   // open the task modal when navigated with ?task=ID (e.g. from command palette)
   useEffect(() => {
@@ -145,7 +126,8 @@ export function ListPage({ listId }: { listId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, listId]);
 
-  if (isLoading) return <PageSkeleton />;
+  if (isLoading||personal.loading) return <PageSkeleton />;
+  if(personal.error)return <div className="p-6 text-sm"><p role="alert">No pudimos recuperar tu vista: {personal.error}</p><button className="mt-3 rounded border border-cu-border px-3 py-2" onClick={personal.retry}>Reintentar</button></div>;
   if (error || !data)
     return (
       <div className="flex h-full items-center justify-center text-sm text-cu-text-secondary">
@@ -226,10 +208,11 @@ export function ListPage({ listId }: { listId: string }) {
               {v.name}
             </button>
           ))}
-          <DropdownMenu.Root><DropdownMenu.Trigger asChild><button disabled={viewBusy} className="flex shrink-0 items-center gap-1 px-2 py-2 text-[13px] text-cu-text-tertiary hover:text-cu-text"><Plus className="h-4 w-4" /> Vista</button></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className="z-50 rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg"><DropdownMenu.Item className="cursor-pointer rounded p-3 text-sm outline-none hover:bg-cu-hover" onSelect={async()=>{setViewBusy(true);setViewError('');try{const created=await apiSend<{id:string;viewId:string}>('/api/dashboards','POST',{name:'Nuevo dashboard',sources:[listId],listId});await qc.invalidateQueries({queryKey:['list',listId]});setActiveViewId(created.viewId);window.history.replaceState(null,'',pathname+'?view='+created.viewId);}catch(e){setViewError((e as Error).message);}finally{setViewBusy(false);}}}>Dashboard configurable</DropdownMenu.Item></DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root>
+          <DropdownMenu.Root><DropdownMenu.Trigger asChild><button disabled={viewBusy} className="flex shrink-0 items-center gap-1 px-2 py-2 text-[13px] text-cu-text-tertiary hover:text-cu-text"><Plus className="h-4 w-4" /> Vista</button></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className="z-50 rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg"><DropdownMenu.Item className="cursor-pointer rounded p-3 text-sm outline-none hover:bg-cu-hover" onSelect={async()=>{setViewBusy(true);setViewError('');try{const created=await apiSend<{id:string;viewId:string}>('/api/dashboards','POST',{name:'Nuevo dashboard',sources:[listId],listId});await qc.invalidateQueries({queryKey:['list',listId]});setActiveViewId(created.viewId);personal.update({views:{},activeViewId:created.viewId});window.history.replaceState(null,'',pathname+'?view='+created.viewId);}catch(e){setViewError((e as Error).message);}finally{setViewBusy(false);}}}>Dashboard configurable</DropdownMenu.Item></DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root>
         </div>
 
         <div className="flex items-center gap-1 text-cu-text-secondary">
+          <span role="status" className="mr-2 text-[11px] text-cu-text-tertiary">Vista personal · {personal.saving?"Guardando…":personal.saveError?"Guardado pendiente":"Guardado automático"}</span>
           <ToolbarButton icon={<Users className="h-4 w-4" />} label="Assignee" />
           <GroupMenu state={vs} onChange={updateVs} />
           <FilterMenu state={vs} onChange={updateVs} tasks={data.tasks} />
@@ -247,6 +230,8 @@ export function ListPage({ listId }: { listId: string }) {
       </div>
 
       {viewError&&<p role="alert" className="px-4 py-2 text-sm text-red-600">{viewError}</p>}
+      {personal.saveError&&<p role="status" className="flex items-center gap-2 px-4 py-2 text-xs text-cu-text-secondary">Guardado personal pendiente.<button className="text-cu-purple underline" onClick={personal.retry}>Reintentar</button></p>}
+      <PersonalView key={activeView?.id} state={presentation} groupBy={vs.groupBy} update={patch=>{if(activeView)personal.update({views:{[activeView.id]:patch}});}}>
       {/* active view */}
       {activeView?.type==='DASHBOARD' ? <DashboardBuilder key={activeView.id} dashboardId={String((activeView.config as {dashboardId?:string}|null)?.dashboardId??'')}/> : shownData && shownData.tasks.length === 0 ? (
         data.tasks.length === 0 ? (
@@ -272,14 +257,15 @@ export function ListPage({ listId }: { listId: string }) {
         )
       ) : (
         <>
-          {activeView?.type === "LIST" && <ListView data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
-          {activeView?.type === "BOARD" && <BoardView data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
+          {activeView?.type === "LIST" && <ListView sorting={!!vs.sort.field} data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
+          {activeView?.type === "BOARD" && <BoardView sorting={!!vs.sort.field} data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
           {activeView?.type === "CALENDAR" && <CalendarView data={shownData!} onOpenTask={setOpenTaskId} />}
           {activeView?.type === "GANTT" && <GanttView data={shownData!} onOpenTask={setOpenTaskId} />}
           {activeView?.type === "TABLE" && <TableView data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
         </>
       )}
 
+      </PersonalView>
       {openTaskId && (
         <TaskModal taskId={openTaskId} listId={listId} onClose={closeTask} onOpenTask={setOpenTaskId} />
       )}

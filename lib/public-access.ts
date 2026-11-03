@@ -1,6 +1,7 @@
 // Keep the anonymous surface explicit. Anything not listed here requires a
 // verified Site identity and membership, including static imported attachments.
 const publicFiles = new Set([
+  "/sav3-clickup-amber.svg", "/sav3-clickup-amber-32.png", "/sav3-clickup-amber-180.png",
   "/favicon.ico", "/favicon.svg", "/file.svg", "/globe.svg",
   "/next.svg", "/vercel.svg", "/window.svg",
 ]);

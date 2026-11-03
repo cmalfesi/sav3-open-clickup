@@ -299,3 +299,14 @@ export const DashboardHistoryTable=sqliteTable("DashboardHistory",{
  id:text("id").primaryKey(),dashboardId:text("dashboardId").notNull().references(()=>DashboardTable.id,{onDelete:"cascade"}),
  actorId:text("actorId").notNull(),revision:integer("revision").notNull(),name:text("name").notNull(),config:text("config").notNull(),createdAt:integer("createdAt").notNull()
 });
+
+export const UserViewPreferenceTable=sqliteTable("UserViewPreference",{
+ userId:text("userId").notNull().references(()=>UserTable.id,{onDelete:"cascade"}),
+ viewId:text("viewId").notNull().references(()=>ViewTable.id,{onDelete:"cascade"}),
+ state:text("state").notNull().default('{}'),updatedAt:integer("updatedAt").notNull()
+},t=>[uniqueIndex("UserViewPreference_user_view").on(t.userId,t.viewId)]);
+export const UserListPreferenceTable=sqliteTable("UserListPreference",{
+ userId:text("userId").notNull().references(()=>UserTable.id,{onDelete:"cascade"}),
+ listId:text("listId").notNull().references(()=>ListTable.id,{onDelete:"cascade"}),
+ activeViewId:text("activeViewId").references(()=>ViewTable.id,{onDelete:"set null"}),updatedAt:integer("updatedAt").notNull()
+},t=>[uniqueIndex("UserListPreference_user_list").on(t.userId,t.listId)]);
