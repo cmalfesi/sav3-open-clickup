@@ -14,8 +14,9 @@ export const cardSchema=z.object({
  field:z.string().max(220).default('timeEstimate'),groupBy:z.string().max(220).default('status'),filter:filterSchema.default(()=>emptyFilter()),
  color:z.string().regex(/^#[0-9a-f]{6}$/i).default('#7b68ee'),
  background:z.string().regex(/^#[0-9a-f]{6}$/i).nullable().default(null),
- layout:z.object({x:z.number().int().min(0).max(11),y:z.number().int().min(0).max(10000),w:z.number().int().min(3).max(12),h:z.number().int().min(4).max(16)}).default({x:0,y:0,w:6,h:5}),
-}).refine(c=>c.type!=='pie'||['count','sum'].includes(c.metric),{message:'La torta admite conteos o sumas; usá barras para promedios y porcentajes.'});
+ fontSize:z.number().int().min(16).max(128).default(36),
+ layout:z.object({x:z.number().int().min(0).max(11),y:z.number().int().min(0).max(10000),w:z.number().int().min(3).max(12),h:z.number().int().min(1).max(16)}).default({x:0,y:0,w:6,h:5}),
+}).refine(c=>c.type==='kpi'||c.layout.h>=4,{message:'Los gráficos y tablas requieren una altura mínima de 4.'}).refine(c=>c.type!=='pie'||['count','sum'].includes(c.metric),{message:'La torta admite conteos o sumas; usá barras para promedios y porcentajes.'});
 export type DashboardCard=z.infer<typeof cardSchema>;
 export const dashboardSchema=z.object({version:z.literal(1).default(1),sources:ids.default([]),filter:filterSchema.default(()=>emptyFilter()),autoRefresh:z.boolean().default(false),cards:z.array(cardSchema).max(40).default([])}).superRefine((v,ctx)=>{
  if(new Set(v.cards.map(c=>c.id)).size!==v.cards.length)ctx.addIssue({code:'custom',message:'Las tarjetas deben tener identificadores distintos.'});

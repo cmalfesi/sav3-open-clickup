@@ -280,3 +280,8 @@ Compartir un dashboard no comparte las tareas: cada usuario ve sus propios datos
 Las tarjetas muestran sus acciones al pasar el mouse, enfocar con teclado o abrir el menú. En móvil y con puntero táctil permanecen visibles. El menú ⋯ permite actualizar, ampliar, configurar, duplicar, mover (en edición) y eliminar una tarjeta, según tus permisos. Las modificaciones entran al borrador y se conservan con **Guardar cambios**; **Descartar** permite revertirlas. El icono de filtro muestra cuántos criterios propios tiene la tarjeta.
 
 En **Ajustes → Fondo de la tarjeta** se elige un color independiente del gráfico. **Usar tema** restaura el fondo del tema claro/oscuro; el texto de una tarjeta con fondo personalizado se adapta para mantener contraste. La barra del dashboard utiliza controles compactos.
+
+
+### Indicadores compactos
+
+En **⋯ → Ajustes**, los indicadores permiten alturas **Micro (1 unidad)**, **Pequeña (2)** y **Reducida (3)**, además de las alturas anteriores. El mínimo anterior era 4 unidades. Los gráficos y las tablas conservan su mínimo de 4. En la misma ventana, **Tamaño del indicador (px)** permite elegir entre 16 y 128 px. La cifra se reduce automáticamente si no cabe; los indicadores más compactos muestran el detalle de cantidad de tareas en su etiqueta accesible y tooltip. El tamaño, la fuente y los filtros se conservan al guardar o duplicar.
