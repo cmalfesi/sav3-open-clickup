@@ -13,6 +13,7 @@ export const cardSchema=z.object({
  type:z.enum(['kpi','bar','pie','line','table','activity']),metric:z.enum(['count','sum','avg','min','max','percent_done']).default('count'),
  field:z.string().max(220).default('timeEstimate'),groupBy:z.string().max(220).default('status'),filter:filterSchema.default(()=>emptyFilter()),
  color:z.string().regex(/^#[0-9a-f]{6}$/i).default('#7b68ee'),
+ background:z.string().regex(/^#[0-9a-f]{6}$/i).nullable().default(null),
  layout:z.object({x:z.number().int().min(0).max(11),y:z.number().int().min(0).max(10000),w:z.number().int().min(3).max(12),h:z.number().int().min(4).max(16)}).default({x:0,y:0,w:6,h:5}),
 }).refine(c=>c.type!=='pie'||['count','sum'].includes(c.metric),{message:'La torta admite conteos o sumas; usá barras para promedios y porcentajes.'});
 export type DashboardCard=z.infer<typeof cardSchema>;

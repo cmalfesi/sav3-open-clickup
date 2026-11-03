@@ -1,6 +1,6 @@
 {
-  "production_version": 10,
-  "production_commit": "0499c9cb9e96520250a856e645c2a7b221df5e31",
+  "production_version": 11,
+  "production_commit": "193fbb05528f5b31e02363baf779071d1a45e1ef",
   "base_upstream_commit": "fd92240fbcec674afed5096b61f9414d16d1b653",
   "runtime_code": "Identical to production; no production database export included.",
   "excluded": [
@@ -288,7 +288,7 @@
     },
     {
       "path": "app/globals.css",
-      "sha256": "1bf26645e04967eca214807f2bdb1f74dc0bfb0489031b28f98c89e153650bc1"
+      "sha256": "96bfc0fb78404c06a650966eb963cbef9da92dd67fb9bb82744f15e99bfca93c"
     },
     {
       "path": "app/layout.tsx",
@@ -376,7 +376,7 @@
     },
     {
       "path": "components/sidebar/sidebar.tsx",
-      "sha256": "47ddb75b43c1280650a18d35fcf4947de8cf07a7b3557ca7dfcc3cb711c28cef"
+      "sha256": "d47b4680b8b7cbb0ef8d6c1847baa97a5d748166fd0051acdb19424f289f7881"
     },
     {
       "path": "components/status/status-manager.tsx",
@@ -1292,15 +1292,15 @@
     },
     {
       "path": "components/dashboard/builder.tsx",
-      "sha256": "67b96f98f71775d76aa198fc6eb99d693fd53daddd5da93242198e7ae344e287"
+      "sha256": "9b4fe21f4784c00dbd4ac3ec43ac567fc96517a77564ef898dbf745e4cbc9e75"
     },
     {
       "path": "components/dashboard/card-editor.tsx",
-      "sha256": "e56800c779b0bddf711534c41f97496341c41397e57ade3e5f21a919694503c0"
+      "sha256": "004995872fdd9ba8b793e86c0afbb93458bb27bbf553db17057b4b081b18b7df"
     },
     {
       "path": "components/dashboard/card.tsx",
-      "sha256": "f756babc2937ae1fec0da950d1575f96d4c18d23d4cf87d6ff5383566e7141e7"
+      "sha256": "28a3c304966b457e773afac72b90992b8da19a585ff166c7bb81c701a2836301"
     },
     {
       "path": "components/dashboard/filters.tsx",
@@ -1324,7 +1324,7 @@
     },
     {
       "path": "lib/dashboard-model.ts",
-      "sha256": "15edab7deec55d25f40e8bf12bcf19924964140bd30041e18fb63b1ce0c079d9"
+      "sha256": "849c5688d0d435a414d9540aa4eb3f110660a5bce8630e1f96b5b0b75ceb95f2"
     },
     {
       "path": "lib/dashboard-service.ts",
@@ -1332,21 +1332,37 @@
     },
     {
       "path": "tests/dashboard-model.test.ts",
-      "sha256": "abf586d15953be191df22ceb246eb7d1aec25d3ce29a46dc9ef7c6430103e4d6"
+      "sha256": "ab633f9c36ac907d1ac6d99e427077c294f31d6351993eb8bd89a7d5092899ef"
     },
     {
       "path": "tests/dashboards.d1.test.ts",
-      "sha256": "f1dd5afd9dd2a166b013fa0564319b4084002a822cb55465551613f4db82a2c8"
+      "sha256": "f2c0f745fe6bf6b5452eb26a3258a593499e1d0daa21be0b629934a9edc44369"
     },
     {
       "path": "docs/releases/10.md",
       "sha256": "fcac1e90b96ac2394b6a28e56a9ded3f7c961f4cf8a79550a92af82784f47d92"
+    },
+    {
+      "path": "components/dashboard/card-actions.tsx",
+      "sha256": "6032eb8363d2ee183ca7f8a22b7564626045bbc551d899046009ce7588e588be"
+    },
+    {
+      "path": "docs/decisions/0015-card-contextual-controls.md",
+      "sha256": "8fea5b113c4b00cdcc7a5f8bec30cf2882a3b58c15eca88a33e10f32ca574489"
+    },
+    {
+      "path": "docs/releases/11.md",
+      "sha256": "dc3380f382ed9392e07f1f195f92b1f1fc10ed3b61b674b10be81a015f26d5aa"
+    },
+    {
+      "path": "lib/dashboard-presentation.ts",
+      "sha256": "91314e7ec680f0e1e1a7a532d071c91d6877e32771026fc95f81e7dd1514e9be"
     }
   ],
   "validation": {
-    "tests": 94,
+    "tests": 96,
     "typescript": "passed",
     "production_build": "passed",
-    "browser": "Authenticated desktop/mobile interaction pending; connected browser unavailable during implementation."
+    "browser": "Real components with synthetic data: desktop menus, Space anchoring, duplication, background, draft save, keyboard and focus return; responsive layout at 390px. Authenticated production and physical touch-device checks pending."
   }
 }

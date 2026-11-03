@@ -273,3 +273,10 @@ En Editar dashboard, agregá tarjetas de indicadores, barras, torta, líneas, li
 Las agrupaciones soportan estados, responsables, prioridades, etiquetas, listas, fechas y campos personalizados. Los cálculos incluyen conteos, suma, promedio, mínimo, máximo y porcentaje de tareas completadas. Los campos vacíos no se convierten en cero. Al hacer clic en un indicador o grupo se pueden abrir las tareas correspondientes.
 
 Compartir un dashboard no comparte las tareas: cada usuario ve sus propios datos autorizados. El panel permite actualización manual, individual por tarjeta o automática cada 30 segundos, pausada durante la edición. El historial identifica al autor de cada revisión; una versión desactualizada no puede sobrescribir otra más reciente. Archivar un panel es reversible desde Mostrar archivados.
+
+
+### Controles de las tarjetas
+
+Las tarjetas muestran sus acciones al pasar el mouse, enfocar con teclado o abrir el menú. En móvil y con puntero táctil permanecen visibles. El menú ⋯ permite actualizar, ampliar, configurar, duplicar, mover (en edición) y eliminar una tarjeta, según tus permisos. Las modificaciones entran al borrador y se conservan con **Guardar cambios**; **Descartar** permite revertirlas. El icono de filtro muestra cuántos criterios propios tiene la tarjeta.
+
+En **Ajustes → Fondo de la tarjeta** se elige un color independiente del gráfico. **Usar tema** restaura el fondo del tema claro/oscuro; el texto de una tarjeta con fondo personalizado se adapta para mantener contraste. La barra del dashboard utiliza controles compactos.
