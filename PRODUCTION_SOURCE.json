@@ -1,6 +1,6 @@
 {
-  "production_version": 12,
-  "production_commit": "2a10e690a74f22a69d634ccbc73f246b21e4946c",
+  "production_version": 13,
+  "production_commit": "e28aa10c6dff5d99c195cd7c3238bb6a1a8742c9",
   "base_upstream_commit": "fd92240fbcec674afed5096b61f9414d16d1b653",
   "runtime_code": "Identical to production; no production database export included.",
   "excluded": [
@@ -280,7 +280,7 @@
     },
     {
       "path": "app/favicon.ico",
-      "sha256": "2b8ad2d33455a8f736fc3a8ebf8f0bdea8848ad4c0db48a2833bd0f9cd775932"
+      "sha256": "bc82c4a7d0bfea9b05c7ffc6e8f92cf626689ec48714d1ff421428ac1d54ae25"
     },
     {
       "path": "app/global-error.tsx",
@@ -292,7 +292,7 @@
     },
     {
       "path": "app/layout.tsx",
-      "sha256": "8ea09dcf52ba8c0c910816e7088802a68c4c7fcab00afb29f893135926e6a3d7"
+      "sha256": "5997e695fbc3cb6b54407a807fb2f1eda5b17c085f25dc5f574772fedb0a82a1"
     },
     {
       "path": "app/login/page.tsx",
@@ -1048,7 +1048,7 @@
     },
     {
       "path": "public/favicon.svg",
-      "sha256": "e6d2e59b7b5bbb0342e0fb496dfc262decbfe4426bbb7b047aec8d467d1dc6f7"
+      "sha256": "c294d493ccd95bd0a9343289b7fb72c8deb451b5624e2c7c4d75d7c5bc01dc80"
     },
     {
       "path": "public/file.svg",
@@ -1365,12 +1365,29 @@
     {
       "path": "docs/releases/12.md",
       "sha256": "1bb8bc7010a431e43ea34d09eac56798d74e0ce84e050820ab986f003ccd9e11"
+    },
+    {
+      "path": "docs/releases/13.md",
+      "sha256": "9601224cd20c70df3a69c163912834b1cad4af00bcff5373e0caaa564480dbdf"
+    },
+    {
+      "path": "public/sav3-clickup-amber-180.png",
+      "sha256": "2c98902caf7e17dec5f0e2d8927d01a0947167e06e5c70ea44a76633be3dbb09"
+    },
+    {
+      "path": "public/sav3-clickup-amber-32.png",
+      "sha256": "8ee4504854f2fe2d86e8493fbfd550ff4e0c00affb42bf5c9ef92fea2985f5e9"
+    },
+    {
+      "path": "public/sav3-clickup-amber.svg",
+      "sha256": "c294d493ccd95bd0a9343289b7fb72c8deb451b5624e2c7c4d75d7c5bc01dc80"
     }
   ],
   "validation": {
     "tests": 97,
     "typescript": "passed",
     "production_build": "passed",
-    "browser": "Real components with synthetic data: micro KPI layout and font fitting exercised on desktop. Authenticated production and physical touch-device verification pending."
+    "browser": "Real components with synthetic data: micro KPI layout and font fitting exercised on desktop. Authenticated production and physical touch-device verification pending.",
+    "favicon": "Rendered and visually inspected; metadata and SVG/PNG/ICO/Apple assets provided."
   }
 }
