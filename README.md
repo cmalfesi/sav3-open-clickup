@@ -285,3 +285,8 @@ En **Ajustes → Fondo de la tarjeta** se elige un color independiente del gráf
 ### Indicadores compactos
 
 En **⋯ → Ajustes**, los indicadores permiten alturas **Micro (1 unidad)**, **Pequeña (2)** y **Reducida (3)**, además de las alturas anteriores. El mínimo anterior era 4 unidades. Los gráficos y las tablas conservan su mínimo de 4. En la misma ventana, **Tamaño del indicador (px)** permite elegir entre 16 y 128 px. La cifra se reduce automáticamente si no cabe; los indicadores más compactos muestran el detalle de cantidad de tareas en su etiqueta accesible y tooltip. El tamaño, la fuente y los filtros se conservan al guardar o duplicar.
+
+
+### Identificación en el navegador
+
+Open ClickUp usa el símbolo original de SAV3 sobre un fondo ámbar como favicon, para distinguirlo del resto de las pestañas SAV3. Incluye SVG, PNG de respaldo, ICO y un icono para accesos directos en iOS.
