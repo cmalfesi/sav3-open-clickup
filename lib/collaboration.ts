@@ -47,9 +47,11 @@ export async function changesResponse(req:Request,db:D1Database,a:Actor){
  if(raw===null)return Response.json({cursor,changed:false});
  const from=Number(raw);if(!Number.isSafeInteger(from)||from<0)return Response.json({error:'Cursor inválido.'},{status:400});
  let dashboardLists:Set<string>|undefined;
- if(u.searchParams.get('view')==='dashboards'){
+ const selectedDashboard=u.searchParams.get('dashboard_id');
+ if(selectedDashboard&&!a.access.can('DASHBOARD',selectedDashboard))return Response.json({error:'Sin acceso al dashboard.'},{status:403});
+ if(selectedDashboard||u.searchParams.get('view')==='dashboards'){
   dashboardLists=new Set<string>();const rows=await db.prepare('SELECT id,sources FROM Dashboard').all<{id:string;sources:string}>();
-  for(const d of rows.results){if(!a.access.can('DASHBOARD',d.id))continue;const sources=JSON.parse(d.sources) as string[];for(const l of a.access.resources('LIST'))if(!sources.length||sources.includes(l.id))dashboardLists.add(l.id);}
+  for(const d of rows.results){if(!a.access.can('DASHBOARD',d.id)||(selectedDashboard&&selectedDashboard!==d.id))continue;const sources=JSON.parse(d.sources) as string[];for(const l of a.access.resources('LIST'))if(!sources.length||sources.includes(l.id))dashboardLists.add(l.id);}
  }
  const events=await db.prepare('SELECT seq,taskId,listId,clientId FROM ChangeEvent WHERE seq>? AND seq<=?'+(listId?' AND listId=?':'')+' ORDER BY seq').bind(...(listId?[from,cursor,listId]:[from,cursor])).all<{seq:number;taskId:string|null;listId:string;clientId:string|null}>();
  const changed=events.results.some(e=>!(client&&e.clientId===client)&&(!dashboardLists||dashboardLists.has(e.listId))&&(e.taskId?a.access.can('TASK',e.taskId):a.access.can('LIST',e.listId)));

@@ -18,6 +18,7 @@ export const VIEW_META: Record<ViewType, { label: string; icon: string }> = {
   CALENDAR: { label: "Calendar", icon: "calendar" },
   GANTT: { label: "Gantt", icon: "gantt" },
   TABLE: { label: "Table", icon: "table" },
+  DASHBOARD: {label:"Dashboard",icon:"chart"},
 };
 
 // ClickUp-style preset list/space colors

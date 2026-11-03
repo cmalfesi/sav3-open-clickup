@@ -1,28 +1,29 @@
 "use client";
 import { useEffect, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname,useSearchParams } from 'next/navigation';
 import { useQueryClient, useIsMutating } from '@tanstack/react-query';
 import { hasDrafts } from '@/lib/drafts';
 import { mutationSource } from '@/lib/api';
 export function ChangesNotice(){
- const path=usePathname(),qc=useQueryClient(),writes=useIsMutating();
+ const path=usePathname(),params=useSearchParams(),viewKey=params.get('panel')??params.get('view')??'',qc=useQueryClient(),writes=useIsMutating();
  const [pending,setPending]=useState(false),[visible,setVisible]=useState(false),[paused,setPaused]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const cursor=useRef<number|null>(null);
  useEffect(()=>{cursor.current=null;setPending(false);setVisible(false);setError('');let cancelled=false,inFlight=false;
   async function check(){if(document.hidden||inFlight)return;inFlight=true;try{
    const url=new URL('/api/changes',window.location.origin);url.searchParams.set('client',mutationSource());if(cursor.current!==null)url.searchParams.set('cursor',String(cursor.current));
-   const match=/^\/l\/([^/]+)/.exec(path);if(match)url.searchParams.set('list_id',decodeURIComponent(match[1]));if(path==='/dashboards')url.searchParams.set('view','dashboards');
+   const panel=document.querySelector('[data-dashboard-id]')?.getAttribute('data-dashboard-id');const match=/^\/l\/([^/]+)/.exec(path);if(panel)url.searchParams.set('dashboard_id',panel);else if(match)url.searchParams.set('list_id',decodeURIComponent(match[1]));else if(path==='/dashboards')url.searchParams.set('view','dashboards');
    const response=await fetch(url);if(!response.ok)return;const data=await response.json() as {cursor:number;changed:boolean};if(cancelled)return;cursor.current=data.cursor;if(data.changed){setPending(true);setVisible(true);}
   }catch{/* Retry on the next tick without replacing the current view. */}finally{inFlight=false;}}
   void check();const timer=setInterval(check,5000);document.addEventListener('visibilitychange',check);window.addEventListener('focus',check);
   return()=>{cancelled=true;clearInterval(timer);document.removeEventListener('visibilitychange',check);window.removeEventListener('focus',check);};
- },[path]);
+ },[path,viewKey]);
+ useEffect(()=>{const clear=()=>{setPending(false);setVisible(false);};window.addEventListener('sav3:dashboard-refreshed',clear);return()=>window.removeEventListener('sav3:dashboard-refreshed',clear);},[]);
  useEffect(()=>{if(!visible||paused)return;const timer=setTimeout(()=>setVisible(false),5000);return()=>clearTimeout(timer);},[visible,paused]);
  async function refresh(){
   const editing=document.activeElement as HTMLElement|null;
   if(hasDrafts()||writes>0||editing?.matches('input,textarea,[contenteditable="true"]')){setError('Terminá de editar o guardar antes de actualizar.');setVisible(true);return;}
   setBusy(true);setError('');try{
-   await Promise.all([qc.invalidateQueries({queryKey:['list']}),qc.invalidateQueries({queryKey:['task']}),qc.invalidateQueries({queryKey:['my-tasks']}),qc.invalidateQueries({queryKey:['notifications']})]);
+   await Promise.all([qc.invalidateQueries({queryKey:['list']}),qc.invalidateQueries({queryKey:['task']}),qc.invalidateQueries({queryKey:['my-tasks']}),qc.invalidateQueries({queryKey:['notifications']}),qc.invalidateQueries({queryKey:['dashboard-hub']})]);
    window.dispatchEvent(new Event('sav3:refresh-view'));setPending(false);setVisible(false);
   }catch{setError('No pudimos actualizar. Volvé a intentar.');}finally{setBusy(false);}
  }

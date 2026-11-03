@@ -112,6 +112,7 @@ export async function getListData(listId: string) {
     if (!a.access.can("TASK",t.id)) return false;
     return !t.parentId || !a.access.can("TASK",t.parentId);
   }).map(visibleTask);
+  list.views=list.views.filter(v=>v.type!=='DASHBOARD'||a.access.can('DASHBOARD',String((v.config as {dashboardId?:string}|null)?.dashboardId??'')));
   const dependencies = loaded.dependencies;
   return { list, tasks, dependencies:dependencies.filter(d=>a.access.can("TASK",d.blockerId)&&a.access.can("TASK",d.blockedId)) };
 }

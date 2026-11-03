@@ -278,3 +278,7 @@ body {
 .cu-mention-item.is-active {
   background: var(--cu-hover);
 }
+
+@media (prefers-reduced-motion: reduce) {
+ .dashboard-builder .react-grid-item { transition: none !important; }
+}

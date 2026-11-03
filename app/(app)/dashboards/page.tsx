@@ -1,29 +1,21 @@
 "use client";
-import { useEffect, useState } from 'react';
-import { accountRequest } from '@/components/account-forms';
+import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useQuery,useQueryClient } from '@tanstack/react-query';
+import { useSiteRouter } from '@/lib/site-navigation';
 import { useWorkspace } from '@/components/workspace-context';
-type Dashboard = {
-    id: string;
-    name: string;
-    total: number;
-    done: number;
-};
-export default function Dashboards() { const { workspace } = useWorkspace(); const [data, setData] = useState<{
-    admin: boolean;
-    dashboards: Dashboard[];
-} | null>(null), [name, setName] = useState(''), [source, setSource] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false); const lists = workspace.spaces.flatMap(s => [...s.lists, ...s.folders.flatMap(f => f.lists)]); async function load() { const r = await fetch('/api/dashboards'); const d = await r.json() as {
-    admin: boolean;
-    dashboards: Dashboard[];
-    error?: string;
-}; if (!r.ok)
-    throw new Error(d.error); setData(d); } useEffect(() => { const refresh=()=>{void load().catch(e=>setError(e.message));}; refresh(); window.addEventListener('sav3:refresh-view',refresh); return ()=>window.removeEventListener('sav3:refresh-view',refresh); }, []); return <main className="flex-1 overflow-y-auto p-6 md:p-8"><div className="mx-auto max-w-5xl"><p className="text-xs font-semibold uppercase text-cu-purple">SAV3 · Seguimiento</p><h1 className="mt-2 text-2xl font-semibold">Dashboards</h1><p className="mt-2 text-sm text-cu-text-secondary">Resúmenes de tareas según tu acceso. Compartir el dashboard no comparte las tareas que lo alimentan.</p>{error && <p role="alert" className="mt-4 text-sm text-red-600">{error}</p>}{data?.admin && <form className="mt-6 flex flex-wrap gap-3 rounded-xl border border-cu-border p-4" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setError(''); try {
-    await accountRequest('/api/dashboards', { name, sources: source ? [source] : [] });
-    setName('');
-    await load();
+import { apiGet,apiSend } from '@/lib/api';
+import { DashboardBuilder } from '@/components/dashboard/builder';
+import { control,action } from '@/components/dashboard/filters';
+type Item={id:string;name:string;total:number;done:number;archived:boolean;canEdit:boolean};
+export default function Dashboards(){
+ const router=useSiteRouter(),params=useSearchParams(),id=params.get('panel'),qc=useQueryClient(),{workspace}=useWorkspace();
+ const q=useQuery({queryKey:['dashboard-hub'],queryFn:()=>apiGet<{canCreate:boolean;dashboards:Item[]}>('/api/dashboards')});
+ const [creating,setCreating]=useState(false),[name,setName]=useState(''),[source,setSource]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[showArchived,setShowArchived]=useState(false);
+ const lists=workspace.spaces.flatMap(s=>[...s.lists,...s.folders.flatMap(f=>f.lists)]);
+ if(id)return <div className="flex min-h-0 flex-1 flex-col"><div className="border-b border-cu-border px-4 py-2"><button className="min-h-9 text-sm text-cu-purple" onClick={()=>router.push('/dashboards')}>← Todos los dashboards</button></div><DashboardBuilder key={id} dashboardId={id}/></div>;
+ async function archive(item:Item){setBusy(true);setError('');try{const d=await apiGet<{config:unknown;revision:number}>('/api/dashboards/'+item.id);await apiSend('/api/dashboards/'+item.id,'PUT',{name:item.name,config:d.config,revision:d.revision,archived:!item.archived});await qc.invalidateQueries({queryKey:['dashboard-hub']});}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+ return <main className="min-h-0 flex-1 overflow-y-auto p-5 md:p-8"><div className="mx-auto max-w-6xl"><header className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-cu-purple">SAV3 · Seguimiento</p><h1 className="mt-2 text-2xl font-semibold">Dashboards</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-cu-text-secondary">Construí tus paneles con indicadores, gráficos y tareas. Cada persona ve los datos permitidos para su cuenta.</p></div>{q.data?.canCreate&&<button className={action} onClick={()=>setCreating(!creating)}>+ Nuevo dashboard</button>}</header>
+ {error&&<p role="alert" className="mt-4 text-sm text-red-600">{error}</p>}{q.error&&<p role="alert" className="mt-4">{q.error.message}</p>}{creating&&<form className="mt-6 grid gap-4 rounded-xl border border-cu-border bg-cu-panel p-5 sm:grid-cols-3" onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');try{const d=await apiSend<{id:string}>('/api/dashboards','POST',{name,sources:source?[source]:[]});await qc.invalidateQueries({queryKey:['dashboard-hub']});router.push('/dashboards?panel='+d.id);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}}><label className="text-sm">Nombre<input autoFocus required maxLength={100} className={`${control} mt-1 w-full`} value={name} onChange={e=>setName(e.target.value)} placeholder="Mi dashboard"/></label><label className="text-sm">Fuente inicial<select className={`${control} mt-1 w-full`} value={source} onChange={e=>setSource(e.target.value)}><option value="">Todas las listas visibles</option>{lists.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select></label><button disabled={busy||!name.trim()} className={`${action} self-end`}>Crear desde cero</button></form>}
+ <label className="my-5 flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={showArchived} onChange={e=>setShowArchived(e.target.checked)}/>Mostrar archivados</label>{q.isLoading&&<p role="status">Cargando dashboards…</p>}<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{q.data?.dashboards.filter(d=>showArchived||!d.archived).map(d=><article key={d.id} className="rounded-xl border border-cu-border bg-cu-panel p-5"><button className="block min-h-11 w-full break-words text-left text-lg font-semibold text-cu-text hover:text-cu-purple" onClick={()=>router.push('/dashboards?panel='+d.id)}>{d.name}</button><p className="mt-3 text-xs text-cu-text-secondary">{d.total} tareas visibles · {d.done} completadas{d.archived?' · Archivado':''}</p><div className="mt-4 flex flex-wrap gap-2"><button className={control} onClick={()=>router.push('/dashboards?panel='+d.id)}>Abrir</button>{d.canEdit&&<button className={control} disabled={busy} onClick={()=>archive(d)}>{d.archived?'Restaurar':'Archivar'}</button>}</div></article>)}</div>{q.data&&!q.data.dashboards.some(d=>showArchived||!d.archived)&&<div className="mt-5 rounded-xl border border-dashed border-cu-border p-10 text-center"><p className="font-medium">Todavía no hay dashboards disponibles.</p><p className="mt-2 text-sm text-cu-text-secondary">Creá uno vacío o pedí que te compartan uno.</p></div>}</div></main>;
 }
-catch (e) {
-    setError((e as Error).message);
-}
-finally {
-    setBusy(false);
-} }}><input aria-label="Nombre del dashboard" required maxLength={100} placeholder="Nombre del dashboard" className="min-h-11 rounded border border-cu-border bg-cu-panel px-3 text-sm" value={name} onChange={e => setName(e.target.value)}/><select aria-label="Fuente del dashboard" className="min-h-11 max-w-full rounded border border-cu-border bg-cu-panel px-3 text-sm" value={source} onChange={e => setSource(e.target.value)}><option value="">Todas las listas visibles</option>{lists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select><button disabled={busy} className="min-h-11 rounded bg-cu-purple px-4 text-sm text-white disabled:opacity-50">Crear dashboard</button></form>}<div className="mt-7 grid gap-5 md:grid-cols-2">{data?.dashboards.map(d => <article id={d.id} key={d.id} className="rounded-xl border border-cu-border bg-cu-panel p-6"><h2 className="text-lg font-semibold">{d.name}</h2><dl className="mt-5 grid grid-cols-3 gap-3">{[['Visibles', d.total], ['Completadas', d.done], ['Pendientes', d.total - d.done]].map(([label, value]) => <div key={label}><dt className="text-xs text-cu-text-secondary">{label}</dt><dd className="mt-2 text-2xl font-semibold">{value}</dd></div>)}</dl><p className="mt-5 text-xs text-cu-text-secondary">Incluye tareas y subtareas no archivadas. Completadas: estados Done y Closed.</p></article>)}</div>{data?.dashboards.length === 0 && <p className="mt-8 rounded-xl border border-dashed border-cu-border p-8 text-center text-sm text-cu-text-secondary">No hay dashboards compartidos con tu cuenta.{data.admin ? ' Creá uno y administrá sus permisos desde Configuración.' : ''}</p>}</div></main>; }
