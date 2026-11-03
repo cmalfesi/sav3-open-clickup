@@ -11,9 +11,11 @@ export async function apiSend<T>(
   url: string,
   method: "POST" | "PATCH" | "PUT" | "DELETE",
   body?: unknown,
+  options?: {keepalive?:boolean},
 ): Promise<T> {
   const res = await fetch(url, {
     method,
+    keepalive:options?.keepalive,
     headers: { "X-SAV3-Client": mutationSource(), ...(body ? { "Content-Type": "application/json" } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });

@@ -290,3 +290,10 @@ En **⋯ → Ajustes**, los indicadores permiten alturas **Micro (1 unidad)**, *
 ### Identificación en el navegador
 
 Open ClickUp usa el símbolo original de SAV3 sobre un fondo ámbar como favicon, para distinguirlo del resto de las pestañas SAV3. Incluye SVG, PNG de respaldo, ICO y un icono para accesos directos en iOS.
+
+
+### Vistas personales con guardado automático
+
+Cada usuario conserva una configuración independiente por lista y por vista. Se recuerdan los grupos expandidos/comprimidos de Lista, Tabla y Board, las subtareas abiertas en Lista, filtros, orden, agrupación, la última vista elegida en cada lista y el mes/semana del Calendario. Un enlace con `?view=` abre esa vista explícita. Los valores compartidos existentes se usan como configuración inicial hasta que cada persona elige los propios.
+
+Las preferencias se guardan en la cuenta y pueden recuperarse en otro dispositivo después de sincronizar. Los cambios pendientes también se guardan localmente, cuando el navegador lo permite, para reintentarlos al volver o recuperar conexión. Si falla el guardado se muestra **Guardado personal pendiente** con un botón de reintento. Estas preferencias no cambian tareas ni la configuración del resto del equipo; incluso un invitado puede recordar su presentación sin ganar permisos de edición. La composición y los filtros del dashboard configurable siguen su flujo explícito de edición/guardado compartido.

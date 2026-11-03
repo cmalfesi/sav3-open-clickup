@@ -2,6 +2,7 @@ import handler from "vinext/server/fetch-handler";
 import { runWithConnectorBinding } from "../lib/connector-context";
 import type { ConnectorBinding } from "../lib/connector-contract.mjs";
 import { dashboardRoute } from "../lib/dashboard-service";
+import { viewPreferenceRoute } from "../lib/view-preference-service";
 import { integrationRoute } from "../lib/integration-access";
 import { changeTargets, recordChanges, changesResponse } from "../lib/collaboration";
 import { publicAccess, privateResponse } from "../lib/public-access";
@@ -23,6 +24,8 @@ const worker = {
     const actor=loaded?{...loaded,channel:(isMcp?'mcp':loaded.kind==='token'?'api':'web') as 'mcp'|'api'|'web'}:null;
     const integration=await integrationRoute(request,env.DB,actor);
     if(integration)return privateResponse(integration);
+    const preferenceResponse=await viewPreferenceRoute(request,env.DB,actor);
+    if(preferenceResponse)return privateResponse(preferenceResponse);
     const dashboardResponse = await dashboardRoute(request,env.DB,actor);
     if(dashboardResponse)return privateResponse(dashboardResponse);
     const teamResponse = await teamRoute(request, env.DB, actor);

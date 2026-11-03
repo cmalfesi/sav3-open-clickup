@@ -1,4 +1,5 @@
 "use client";
+import {useGroupCollapsed} from "./personal-view";
 
 import { useMemo, useState } from "react";
 import { ChevronRight, ChevronDown, Plus } from "lucide-react";
@@ -134,7 +135,7 @@ function TableGroup({
   onOpenTask: (id: string) => void;
   onUpdate: (taskId: string, patch: Record<string, unknown>) => void;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useGroupCollapsed(group.id);
   const [visible, setVisible] = useState(PAGE_SIZE);
   const create = useCreateTask(listId);
   const shown = tasks.slice(0, visible);
@@ -143,7 +144,7 @@ function TableGroup({
   return (
     <div>
       <div className="flex items-center gap-2 bg-cu-sidebar/50 px-3 py-1.5">
-        <button onClick={() => setCollapsed((c) => !c)} className="text-cu-text-tertiary hover:text-cu-text">
+        <button aria-label={(collapsed?"Expandir ":"Comprimir ")+group.label} aria-expanded={!collapsed} onClick={() => setCollapsed((c) => !c)} className="text-cu-text-tertiary hover:text-cu-text">
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         <span

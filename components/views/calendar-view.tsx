@@ -1,6 +1,7 @@
 "use client";
+import {useCalendarPosition} from "./personal-view";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   startOfMonth,
   endOfMonth,
@@ -31,7 +32,6 @@ import { StatusCircle } from "@/components/menus/status-control";
 import { useUpdateTask } from "@/lib/hooks";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-type Mode = "month" | "week";
 
 export function CalendarView({
   data,
@@ -40,8 +40,7 @@ export function CalendarView({
   data: ListData;
   onOpenTask: (id: string) => void;
 }) {
-  const [cursor, setCursor] = useState(() => new Date());
-  const [mode, setMode] = useState<Mode>("month");
+  const {cursor,setCursor,mode,setMode}=useCalendarPosition();
   const update = useUpdateTask(data.list.id);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
