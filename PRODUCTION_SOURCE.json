@@ -1,6 +1,6 @@
 {
-  "production_version": 11,
-  "production_commit": "193fbb05528f5b31e02363baf779071d1a45e1ef",
+  "production_version": 12,
+  "production_commit": "2a10e690a74f22a69d634ccbc73f246b21e4946c",
   "base_upstream_commit": "fd92240fbcec674afed5096b61f9414d16d1b653",
   "runtime_code": "Identical to production; no production database export included.",
   "excluded": [
@@ -1292,15 +1292,15 @@
     },
     {
       "path": "components/dashboard/builder.tsx",
-      "sha256": "9b4fe21f4784c00dbd4ac3ec43ac567fc96517a77564ef898dbf745e4cbc9e75"
+      "sha256": "47328d48d4b147776831d8c72ef49c3cfdb63ff14b4cd8f818a19c14f949d87b"
     },
     {
       "path": "components/dashboard/card-editor.tsx",
-      "sha256": "004995872fdd9ba8b793e86c0afbb93458bb27bbf553db17057b4b081b18b7df"
+      "sha256": "ae14a7eadcb95a809757fcac033bfda1692bb208d4b4f0a601977e596ee4faeb"
     },
     {
       "path": "components/dashboard/card.tsx",
-      "sha256": "28a3c304966b457e773afac72b90992b8da19a585ff166c7bb81c701a2836301"
+      "sha256": "a6c18b39b70b6c909266c25134fd42c8291e95f1f5bc8281af62738ef04a6877"
     },
     {
       "path": "components/dashboard/filters.tsx",
@@ -1324,7 +1324,7 @@
     },
     {
       "path": "lib/dashboard-model.ts",
-      "sha256": "849c5688d0d435a414d9540aa4eb3f110660a5bce8630e1f96b5b0b75ceb95f2"
+      "sha256": "320e87807569976378b184c99537ef960f5eff9f1f69417f160cf91cfc6de3fa"
     },
     {
       "path": "lib/dashboard-service.ts",
@@ -1332,11 +1332,11 @@
     },
     {
       "path": "tests/dashboard-model.test.ts",
-      "sha256": "ab633f9c36ac907d1ac6d99e427077c294f31d6351993eb8bd89a7d5092899ef"
+      "sha256": "a8d76869d2fb48f67b37569dddbc78d2696e34d3a60d4b33a40457922a3c2da5"
     },
     {
       "path": "tests/dashboards.d1.test.ts",
-      "sha256": "f2c0f745fe6bf6b5452eb26a3258a593499e1d0daa21be0b629934a9edc44369"
+      "sha256": "a2cfa72cde50a8801a499dc885037df74baed1db11b73e36e349683adab4e913"
     },
     {
       "path": "docs/releases/10.md",
@@ -1344,7 +1344,7 @@
     },
     {
       "path": "components/dashboard/card-actions.tsx",
-      "sha256": "6032eb8363d2ee183ca7f8a22b7564626045bbc551d899046009ce7588e588be"
+      "sha256": "13691545331278fe69510690a30ac695a3ef0abb54fa87c5e58e76d222c0a0f0"
     },
     {
       "path": "docs/decisions/0015-card-contextual-controls.md",
@@ -1357,12 +1357,20 @@
     {
       "path": "lib/dashboard-presentation.ts",
       "sha256": "91314e7ec680f0e1e1a7a532d071c91d6877e32771026fc95f81e7dd1514e9be"
+    },
+    {
+      "path": "docs/decisions/0016-compact-kpi-sizing.md",
+      "sha256": "9a485b5e158264d55510b112f2c6b06e8822f8a0f3fc079d4d96b5197ca6ef27"
+    },
+    {
+      "path": "docs/releases/12.md",
+      "sha256": "1bb8bc7010a431e43ea34d09eac56798d74e0ce84e050820ab986f003ccd9e11"
     }
   ],
   "validation": {
-    "tests": 96,
+    "tests": 97,
     "typescript": "passed",
     "production_build": "passed",
-    "browser": "Real components with synthetic data: desktop menus, Space anchoring, duplication, background, draft save, keyboard and focus return; responsive layout at 390px. Authenticated production and physical touch-device checks pending."
+    "browser": "Real components with synthetic data: micro KPI layout and font fitting exercised on desktop. Authenticated production and physical touch-device verification pending."
   }
 }
