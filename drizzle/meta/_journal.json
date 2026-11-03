@@ -22,6 +22,13 @@
       "when": 1793662467240,
       "tag": "0002_loving_caretaker",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793668527267,
+      "tag": "0003_fair_carlie_cooper",
+      "breakpoints": true
     }
   ]
 }

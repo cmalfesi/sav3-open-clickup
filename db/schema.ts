@@ -289,3 +289,13 @@ export const ChangeEventTable = sqliteTable("ChangeEvent", {
  seq: integer("seq").primaryKey({autoIncrement:true}), taskId: text("taskId"), listId: text("listId").notNull(),
  actorId: text("actorId").notNull(), clientId: text("clientId"), createdAt: integer("createdAt").notNull()
 }, t => [index("ChangeEvent_list_seq").on(t.listId,t.seq)]);
+
+export const DashboardDocumentTable=sqliteTable("DashboardDocument",{
+ dashboardId:text("dashboardId").primaryKey().references(()=>DashboardTable.id,{onDelete:"cascade"}),
+ config:text("config").notNull(),revision:integer("revision").notNull().default(1),writeKey:text("writeKey").notNull(),
+ archived:integer("archived").notNull().default(0),updatedAt:integer("updatedAt").notNull()
+});
+export const DashboardHistoryTable=sqliteTable("DashboardHistory",{
+ id:text("id").primaryKey(),dashboardId:text("dashboardId").notNull().references(()=>DashboardTable.id,{onDelete:"cascade"}),
+ actorId:text("actorId").notNull(),revision:integer("revision").notNull(),name:text("name").notNull(),config:text("config").notNull(),createdAt:integer("createdAt").notNull()
+});

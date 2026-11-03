@@ -1,5 +1,7 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
+import { DashboardBuilder } from "@/components/dashboard/builder";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useSiteRouter as useRouter } from "@/lib/site-navigation";
@@ -22,6 +24,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { TemplatePicker } from "@/components/views/template-picker";
 import { useList, useCreateTask, useToggleFavorite } from "@/lib/hooks";
 import { useWorkspace } from "@/components/workspace-context";
+import { hasDrafts } from "@/lib/drafts";
 import { apiSend } from "@/lib/api";
 import { ViewType } from "@/lib/enums";
 import { EMPTY_VIEW_STATE, applyViewState, type ViewState } from "@/lib/view-state";
@@ -40,6 +43,7 @@ const VIEW_ICON: Record<ViewType, React.ReactNode> = {
   BOARD: <Kanban className="h-4 w-4" />,
   CALENDAR: <CalendarIcon className="h-4 w-4" />,
   GANTT: <ChartNoAxesGantt className="h-4 w-4" />,
+  DASHBOARD: <ChartNoAxesGantt className="h-4 w-4" />,
   TABLE: <Table2 className="h-4 w-4" />,
 };
 
@@ -60,6 +64,8 @@ function vsFromConfig(config: unknown): ViewState {
 }
 
 export function ListPage({ listId }: { listId: string }) {
+  const qc=useQueryClient();
+  const [viewBusy,setViewBusy]=useState(false),[viewError,setViewError]=useState('');
   const { data, isLoading, error } = useList(listId);
   const create = useCreateTask(listId);
   const { favorites } = useWorkspace();
@@ -82,13 +88,16 @@ export function ListPage({ listId }: { listId: string }) {
   // initialize the active view + load its persisted config once data arrives
   useEffect(() => {
     if (!activeViewId && views.length) {
-      setActiveViewId(views[0].id);
+      setActiveViewId((views.find(v=>v.id===searchParams.get("view"))??views[0]).id);
       setVs(vsFromConfig(views[0].config));
     }
   }, [views, activeViewId]);
 
   function selectView(view: { id: string; config: unknown }) {
+    if(activeView?.type==='DASHBOARD'&&hasDrafts()){setViewError('Guardá o descartá los cambios del dashboard antes de cambiar de vista.');return;}
+    setViewError('');
     setActiveViewId(view.id);
+    window.history.replaceState(null,"",pathname+"?view="+encodeURIComponent(view.id));
     setVs(vsFromConfig(view.config)); // load — does NOT trigger a save
   }
 
@@ -108,7 +117,7 @@ export function ListPage({ listId }: { listId: string }) {
 
   function closeTask() {
     setOpenTaskId(null);
-    if (taskParam) router.replace(pathname);
+    if (taskParam) router.replace(pathname+(activeViewId?"?view="+encodeURIComponent(activeViewId):""));
   }
 
   const shownData = useMemo(
@@ -147,7 +156,7 @@ export function ListPage({ listId }: { listId: string }) {
   const { list } = data;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 min-w-0 flex-col">
       {/* breadcrumb / title bar */}
       <div className="flex items-center gap-2 px-4 pt-3">
         <span className="flex items-center gap-1.5 text-[13px] text-cu-text-secondary">
@@ -200,8 +209,8 @@ export function ListPage({ listId }: { listId: string }) {
       </div>
 
       {/* view tabs */}
-      <div className="flex items-center justify-between border-b border-cu-border px-3">
-        <div className="flex items-center gap-0.5">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-cu-border px-3">
+        <div className="flex max-w-full items-center gap-0.5 overflow-x-auto">
           {list.views.map((v) => (
             <button
               key={v.id}
@@ -217,9 +226,7 @@ export function ListPage({ listId }: { listId: string }) {
               {v.name}
             </button>
           ))}
-          <button className="flex items-center gap-1 px-2 py-2 text-[13px] text-cu-text-tertiary hover:text-cu-text">
-            <Plus className="h-4 w-4" /> View
-          </button>
+          <DropdownMenu.Root><DropdownMenu.Trigger asChild><button disabled={viewBusy} className="flex shrink-0 items-center gap-1 px-2 py-2 text-[13px] text-cu-text-tertiary hover:text-cu-text"><Plus className="h-4 w-4" /> Vista</button></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className="z-50 rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg"><DropdownMenu.Item className="cursor-pointer rounded p-3 text-sm outline-none hover:bg-cu-hover" onSelect={async()=>{setViewBusy(true);setViewError('');try{const created=await apiSend<{id:string;viewId:string}>('/api/dashboards','POST',{name:'Nuevo dashboard',sources:[listId],listId});await qc.invalidateQueries({queryKey:['list',listId]});setActiveViewId(created.viewId);window.history.replaceState(null,'',pathname+'?view='+created.viewId);}catch(e){setViewError((e as Error).message);}finally{setViewBusy(false);}}}>Dashboard configurable</DropdownMenu.Item></DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root>
         </div>
 
         <div className="flex items-center gap-1 text-cu-text-secondary">
@@ -239,8 +246,9 @@ export function ListPage({ listId }: { listId: string }) {
         </div>
       </div>
 
+      {viewError&&<p role="alert" className="px-4 py-2 text-sm text-red-600">{viewError}</p>}
       {/* active view */}
-      {shownData && shownData.tasks.length === 0 ? (
+      {activeView?.type==='DASHBOARD' ? <DashboardBuilder key={activeView.id} dashboardId={String((activeView.config as {dashboardId?:string}|null)?.dashboardId??'')}/> : shownData && shownData.tasks.length === 0 ? (
         data.tasks.length === 0 ? (
           <EmptyState
             icon={<ClipboardList className="h-6 w-6" />}

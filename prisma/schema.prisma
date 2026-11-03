@@ -452,6 +452,7 @@ model Activity {
 // ----------------------------------------------------------------------------
 
 enum ViewType {
+  DASHBOARD
   LIST
   BOARD
   CALENDAR

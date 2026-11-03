@@ -1,6 +1,6 @@
 {
-  "production_version": 8,
-  "production_commit": "30c48ad9c3ad611a070929c807f06cf35ef8dc00",
+  "production_version": 9,
+  "production_commit": "9088f4bd37136071267774174845994c65ad7fc9",
   "base_upstream_commit": "fd92240fbcec674afed5096b61f9414d16d1b653",
   "runtime_code": "Identical to production; no production database export included.",
   "excluded": [
@@ -40,7 +40,7 @@
     },
     {
       "path": "app/(app)/dashboards/page.tsx",
-      "sha256": "3d3d47ed6c88afcb1919b921e082fef65c81f45828746a7ff8ca77d32c6e0f89"
+      "sha256": "6523a715dcacd107c3ba423f149aba0ecd8325c9ded52a053ea345079dc46e1e"
     },
     {
       "path": "app/(app)/documents/page.tsx",
@@ -288,7 +288,7 @@
     },
     {
       "path": "app/globals.css",
-      "sha256": "bce918fc9f6712e4e428481308a78990057db943d1f347844faacc0f64649398"
+      "sha256": "1bf26645e04967eca214807f2bdb1f74dc0bfb0489031b28f98c89e153650bc1"
     },
     {
       "path": "app/layout.tsx",
@@ -704,7 +704,7 @@
     },
     {
       "path": "components/views/list-page.tsx",
-      "sha256": "f3bf964d7a4defe3f925db99b5cf170c02570fa75a8bdb2a972a87e72a119ee4"
+      "sha256": "5685e139328a4c0f2480300cdba4e62924d40360afcba84754afb03011d01178"
     },
     {
       "path": "components/views/list-view.tsx",
@@ -732,7 +732,7 @@
     },
     {
       "path": "db/schema.ts",
-      "sha256": "7b81a6550b89bff7385648fa690aa632f68c1e210b095a712e189736067fd7f8"
+      "sha256": "ea1cfc30f90eb346a138a78663d878ad71d306a2ecf56bb14e659864b8a9c10f"
     },
     {
       "path": "docs/decisions/0000-template.md",
@@ -820,7 +820,7 @@
     },
     {
       "path": "drizzle/meta/_journal.json",
-      "sha256": "028f88661aa3ace44c92428c42f0b5470031839f819d20381b05cb4a64bbb1bb"
+      "sha256": "cb1cee692ae75c52e3da27adb2fabca5c384209fcabe088006cccebc5e24717a"
     },
     {
       "path": "e2e/app.spec.ts",
@@ -880,7 +880,7 @@
     },
     {
       "path": "lib/constants.ts",
-      "sha256": "4cd5b696807d8bc5cf5ea64f2466f79a96edcb90de93002da6f3f92c2e7fcc01"
+      "sha256": "7c3674e45a7e3c14a1b9dd9780ff840a17dc887eaba8eacaaa98789ac2543731"
     },
     {
       "path": "lib/db.ts",
@@ -932,7 +932,7 @@
     },
     {
       "path": "lib/queries.ts",
-      "sha256": "b3b4c6b105dbc51f1375f847f41bf0b26d02df64a6890782374322126f7b1b46"
+      "sha256": "44dc080fcb2c21dc036300c9d8b9817ede5f1d2ecfd849f0cf9ae8510e208182"
     },
     {
       "path": "lib/rate-limit.ts",
@@ -956,7 +956,7 @@
     },
     {
       "path": "lib/team-service.ts",
-      "sha256": "10bc8f4a069a5bc3189126d7412fc3cc35b5a08bdff13fc8909e8e32b8ee21a5"
+      "sha256": "696e74dc328afb5723ad5b996957f94ea9b8af80cd4b8df2f566fb8f9a16fd47"
     },
     {
       "path": "lib/time.ts",
@@ -976,7 +976,7 @@
     },
     {
       "path": "pnpm-lock.yaml",
-      "sha256": "0241bee590b7ff11c4bf4a22327c19187201756ebb60ec1dc825984679968c1b"
+      "sha256": "9140a10a08b671ef0db7ee1314daf179cb5067c8a6f3e96ecb72c5e3d78c8140"
     },
     {
       "path": "pnpm-workspace.yaml",
@@ -1036,7 +1036,7 @@
     },
     {
       "path": "prisma/schema.prisma",
-      "sha256": "c7725829fa1f69c3f4b13d4a7f7c87f8e225d4d8aaab45893e93f978d0629196"
+      "sha256": "4b7934368d25661a9b0592e24ef2e0035ac6231c85dc30d1cf12c9dce94c2bc4"
     },
     {
       "path": "prisma/seed.ts",
@@ -1216,7 +1216,7 @@
     },
     {
       "path": "worker/index.ts",
-      "sha256": "853838d77173b4120024b181b8115f77523d780b75fae345cbba928c97697357"
+      "sha256": "a2d859865b5d0a66564fced82a69aa2bb86ebca437a1a9be2dfb88d942ebbf6d"
     },
     {
       "path": "docs/decisions/0012-restored-workspace-initial-render.md",
@@ -1248,7 +1248,7 @@
     },
     {
       "path": "components/changes-notice.tsx",
-      "sha256": "68caf11da3c86a0b885c0bba8d41e72896660cfb294acbe4b52d65fd36ad1c34"
+      "sha256": "7f762e9aef9a8e1a5811deaa7ebb8a848da8614fca1972b42e74c794b0427f31"
     },
     {
       "path": "components/connections-settings.tsx",
@@ -1272,7 +1272,7 @@
     },
     {
       "path": "lib/collaboration.ts",
-      "sha256": "e3df668e5b14de7b97c1b0bb0833de612e1db53c241359359cfd4f3a5145feeb"
+      "sha256": "49b38c5ca209a1f7d4d875a0f7f8182c783eda103dc3183a3776c0ed3dfff4c2"
     },
     {
       "path": "lib/comments.ts",
@@ -1289,13 +1289,60 @@
     {
       "path": "tests/collaboration.d1.test.ts",
       "sha256": "1b9c5405c3ade8e318683f7f483f7894b2908c9d220f9f036760a63afc9939f0"
+    },
+    {
+      "path": "components/dashboard/builder.tsx",
+      "sha256": "67b96f98f71775d76aa198fc6eb99d693fd53daddd5da93242198e7ae344e287"
+    },
+    {
+      "path": "components/dashboard/card-editor.tsx",
+      "sha256": "e56800c779b0bddf711534c41f97496341c41397e57ade3e5f21a919694503c0"
+    },
+    {
+      "path": "components/dashboard/card.tsx",
+      "sha256": "f756babc2937ae1fec0da950d1575f96d4c18d23d4cf87d6ff5383566e7141e7"
+    },
+    {
+      "path": "components/dashboard/filters.tsx",
+      "sha256": "703c685d0df8aac750dfb0fe60062f891162f21d1dfaeb8bc3e128766fe944cb"
+    },
+    {
+      "path": "docs/decisions/0014-dashboard-builder.md",
+      "sha256": "e3f28e5c0900764ff6a945ba3bf37e7050abf940c1f720f0f724eb7f6d3ec819"
+    },
+    {
+      "path": "docs/releases/9.md",
+      "sha256": "1c1c26c6a011105e4c97670f9a9f596fd4d80de6bf7bd9bfd42ca401633cf2e6"
+    },
+    {
+      "path": "drizzle/0003_fair_carlie_cooper.sql",
+      "sha256": "c29f8d627f304a60a296cfea65c4b3ee37cca5b25a021ca757dcdf0041c81864"
+    },
+    {
+      "path": "drizzle/meta/0003_snapshot.json",
+      "sha256": "a9f994ef797bd82bf952deee464ca525f1c35a858598810e46740b9c59437338"
+    },
+    {
+      "path": "lib/dashboard-model.ts",
+      "sha256": "15edab7deec55d25f40e8bf12bcf19924964140bd30041e18fb63b1ce0c079d9"
+    },
+    {
+      "path": "lib/dashboard-service.ts",
+      "sha256": "fbbe5709dd3defdfe114b4cdab1c239b962da4b680da2e0833a85b33b8337f58"
+    },
+    {
+      "path": "tests/dashboard-model.test.ts",
+      "sha256": "abf586d15953be191df22ceb246eb7d1aec25d3ce29a46dc9ef7c6430103e4d6"
+    },
+    {
+      "path": "tests/dashboards.d1.test.ts",
+      "sha256": "78ae2c48030d46539f03db76cbdfb8bb99df8b1ff8e17ee303240859a36042fd"
     }
   ],
   "validation": {
-    "tests": 82,
+    "tests": 93,
     "typescript": "passed",
     "production_build": "passed",
-    "github_ci": "https://github.com/cmalfesi/sav3-open-clickup/actions/runs/41548685628",
-    "browser": "production desktop, keyboard refresh and 390x844 mobile emulation"
+    "browser": "Authenticated desktop/mobile interaction pending; connected browser unavailable during implementation."
   }
 }

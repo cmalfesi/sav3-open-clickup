@@ -263,3 +263,13 @@ En Configuración → Conexiones LLM, cada persona puede crear una conexión con
 Inbox incluye menciones, asignaciones, comentarios y respuestas, con filtros y preferencias por usuario. Para mencionar a alguien en la web, seleccionar la persona en el menú `@`; en MCP, usar `mention_user_ids`. Solo se notifican destinatarios con acceso a la tarea. No hay envío de correo ni push.
 
 Los cambios de otros usuarios se ofrecen mediante un aviso de cinco segundos; «Actualizar» refresca los datos de la vista sin una recarga completa. Si se oculta, queda «Cambios pendientes». Los borradores o guardados en curso deben resolverse antes de actualizar. La detección consulta cambios cada cinco segundos mientras la página está visible.
+
+## Dashboards configurables
+
+Desde Dashboards → Nuevo dashboard se crea un panel vacío. También se puede agregar desde una lista con + Vista → Dashboard configurable. La ubicación del panel y sus listas fuente son independientes.
+
+En Editar dashboard, agregá tarjetas de indicadores, barras, torta, líneas, lista de tareas o actividad. Cada tarjeta permite elegir un cálculo, agrupación, tamaño, color y filtros. Los filtros del panel y de la tarjeta se combinan. Arrastrá desde el asa o usá los controles de posición; el tamaño también se cambia en Configurar. Guardar cambios conserva la configuración; Descartar cambios vuelve a la última revisión guardada.
+
+Las agrupaciones soportan estados, responsables, prioridades, etiquetas, listas, fechas y campos personalizados. Los cálculos incluyen conteos, suma, promedio, mínimo, máximo y porcentaje de tareas completadas. Los campos vacíos no se convierten en cero. Al hacer clic en un indicador o grupo se pueden abrir las tareas correspondientes.
+
+Compartir un dashboard no comparte las tareas: cada usuario ve sus propios datos autorizados. El panel permite actualización manual, individual por tarjeta o automática cada 30 segundos, pausada durante la edición. El historial identifica al autor de cada revisión; una versión desactualizada no puede sobrescribir otra más reciente. Archivar un panel es reversible desde Mostrar archivados.

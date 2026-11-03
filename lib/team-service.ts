@@ -1,3 +1,4 @@
+import { dashboardRoute } from "./dashboard-service";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { Access, AccessError, type Actor, type Grant, type Resource, type Role } from "./access-context";
@@ -139,6 +140,7 @@ const publicEndpoints = new Set(["/api/auth/login", "/api/auth/invitation", "/ap
 export const isPublicAuth = (path: string) => publicEndpoints.has(path);
 export async function teamRoute(req: Request, db: D1Database, a: Actor | null): Promise<Response | null> {
     const path = new URL(req.url).pathname;
+    if(path==='/api/dashboards')return dashboardRoute(req,db,a);
     if (!isPublicAuth(path) && !path.startsWith('/api/team') && path !== '/api/auth/logout' && path !== '/api/account/password' && path !== '/api/dashboards')
         return null;
     try {
@@ -222,31 +224,6 @@ export async function teamRoute(req: Request, db: D1Database, a: Actor | null): 
                 throw new AccessError(400, "La contraseña actual no coincide.");
             await db.batch([db.prepare('UPDATE User SET passwordHash=? WHERE id=?').bind(hashPassword(data.password), a.user.id), db.prepare('DELETE FROM Session WHERE userId=?').bind(a.user.id)]);
             return newSession(db, req, a.user.id);
-        }
-        if (path === '/api/dashboards') {
-            if (req.method === 'POST') {
-                manage(a);
-                const data = validate(z.object({ name: z.string().trim().min(1).max(100), sources: z.array(z.string()).max(100) }), body);
-                for (const id of data.sources)
-                    a.access.assert('LIST', id);
-                const id = randomUUID();
-                await db.prepare('INSERT INTO Dashboard (id,name,sources,createdBy,createdAt) VALUES (?,?,?,?,?)').bind(id, data.name, JSON.stringify(data.sources), a.user.id, Date.now()).run();
-                await audit(db, a, 'dashboard.create', id);
-                return Response.json({ id });
-            }
-            if (req.method !== 'GET')
-                throw new AccessError(405, "Método no permitido.");
-            const all = await rows<{
-                id: string;
-                name: string;
-                sources: string;
-            }>(db, 'SELECT id,name,sources FROM Dashboard');
-            const tasks = await rows<{
-                id: string;
-                listId: string;
-                type: string;
-            }>(db, 'SELECT t.id,t.listId,s.type FROM Task t JOIN Status s ON s.id=t.statusId WHERE t.archived=0');
-            return Response.json({ admin: a.access.admin, dashboards: all.filter(d => a.access.can('DASHBOARD', d.id)).map(d => { const sources = JSON.parse(d.sources) as string[]; const visible = tasks.filter(t => a.access.can('TASK', t.id) && (!sources.length || sources.includes(t.listId))); return { id: d.id, name: d.name, total: visible.length, done: visible.filter(t => t.type === 'DONE' || t.type === 'CLOSED').length }; }) });
         }
         if (path === '/api/team/me')
             return Response.json({ role: a.role, admin: a.access.admin, kind: a.kind });
