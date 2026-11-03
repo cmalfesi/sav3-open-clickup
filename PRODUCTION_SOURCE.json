@@ -1,6 +1,6 @@
 {
-  "production_version": 9,
-  "production_commit": "9088f4bd37136071267774174845994c65ad7fc9",
+  "production_version": 10,
+  "production_commit": "0499c9cb9e96520250a856e645c2a7b221df5e31",
   "base_upstream_commit": "fd92240fbcec674afed5096b61f9414d16d1b653",
   "runtime_code": "Identical to production; no production database export included.",
   "excluded": [
@@ -1328,7 +1328,7 @@
     },
     {
       "path": "lib/dashboard-service.ts",
-      "sha256": "fbbe5709dd3defdfe114b4cdab1c239b962da4b680da2e0833a85b33b8337f58"
+      "sha256": "05667fe90ca775d4930bd0e7335b4ee0d551f302aaaa76689eeb3674da0daca9"
     },
     {
       "path": "tests/dashboard-model.test.ts",
@@ -1336,11 +1336,15 @@
     },
     {
       "path": "tests/dashboards.d1.test.ts",
-      "sha256": "78ae2c48030d46539f03db76cbdfb8bb99df8b1ff8e17ee303240859a36042fd"
+      "sha256": "f1dd5afd9dd2a166b013fa0564319b4084002a822cb55465551613f4db82a2c8"
+    },
+    {
+      "path": "docs/releases/10.md",
+      "sha256": "fcac1e90b96ac2394b6a28e56a9ded3f7c961f4cf8a79550a92af82784f47d92"
     }
   ],
   "validation": {
-    "tests": 93,
+    "tests": 94,
     "typescript": "passed",
     "production_build": "passed",
     "browser": "Authenticated desktop/mobile interaction pending; connected browser unavailable during implementation."
