@@ -282,3 +282,33 @@ body {
 @media (prefers-reduced-motion: reduce) {
  .dashboard-builder .react-grid-item { transition: none !important; }
 }
+
+/* Keep menu anchors measurable when Radix moves focus into its portal. Never
+   display:none a trigger on hover-out: its zero rectangle sends the menu to 0,0. */
+.cu-row-action { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.dashboard-icon-button { display: inline-flex; height: 28px; min-width: 28px; align-items: center; justify-content: center; border-radius: 5px; padding: 0 4px; }
+.dashboard-icon-button:hover { background: var(--cu-hover); }
+.dashboard-icon-button:focus-visible, .cu-row-action:focus-visible { outline: 2px solid var(--cu-purple); outline-offset: 2px; }
+.dashboard-toolbar-button { display: inline-flex; min-height: 28px; align-items: center; justify-content: center; gap: 5px; border: 1px solid var(--cu-border); border-radius: 6px; background: var(--cu-panel); padding: 3px 8px; font-size: 12px; line-height: 20px; color: var(--cu-text); }
+.dashboard-toolbar-button:hover { background: var(--cu-hover); }
+.dashboard-toolbar-button:focus-visible { outline: 2px solid var(--cu-purple); outline-offset: 2px; }
+.dashboard-toolbar-button:disabled { opacity: 0.5; cursor: default; }
+.dashboard-toolbar-primary { border-color: var(--cu-purple); background: var(--cu-purple); color: white; }
+.dashboard-toolbar-primary:hover { background: var(--cu-purple-dark); }
+@media (hover: hover) and (pointer: fine) {
+ .dashboard-card-actions, .cu-row-action { opacity: 0; }
+ .dashboard-card:hover .dashboard-card-actions, .dashboard-card:focus-within .dashboard-card-actions,
+ .dashboard-card-actions:has([data-state="open"]),
+ .group:hover > .cu-row-action, .group:focus-within > .cu-row-action,
+ .group:hover .cu-row-action, .group:focus-within .cu-row-action,
+ .cu-row-action[data-state="open"] { opacity: 1; }
+}
+@media (pointer: coarse) {
+ .dashboard-icon-button, .cu-row-action { min-height: 40px; min-width: 36px; }
+ .dashboard-toolbar-button { min-height: 36px; }
+}
+@media (max-width: 767px) {
+ .dashboard-card-actions { opacity: 1; }
+ .dashboard-icon-button { min-height: 36px; min-width: 32px; }
+ .dashboard-toolbar-button { min-height: 32px; }
+}

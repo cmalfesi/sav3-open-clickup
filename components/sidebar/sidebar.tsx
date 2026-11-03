@@ -24,7 +24,6 @@ import {
   LogOut,
   Star,
 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { apiSend } from "@/lib/api";
 import { useWorkspace } from "@/components/workspace-context";
@@ -470,18 +469,18 @@ function Row({
       {addMenu ? (
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
-            <button className="hidden rounded p-0.5 text-cu-text-tertiary hover:bg-cu-hover group-hover:block" title="Add">
+            <button className="cu-row-action rounded p-0.5 text-cu-text-tertiary hover:bg-cu-hover" title="Add">
               <Plus className="h-3.5 w-3.5" />
             </button>
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
-            <DropdownMenu.Content sideOffset={4} align="end" className="z-50 min-w-[160px] rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg">
+            <DropdownMenu.Content side="bottom" sideOffset={4} collisionPadding={8} align="end" className="z-50 min-w-[160px] rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg">
               {addMenu}
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
       ) : onAdd ? (
-        <button onClick={onAdd} className="hidden rounded p-0.5 text-cu-text-tertiary hover:bg-cu-hover group-hover:block" title="New List">
+        <button onClick={onAdd} className="cu-row-action rounded p-0.5 text-cu-text-tertiary hover:bg-cu-hover" title="New List">
           <Plus className="h-3.5 w-3.5" />
         </button>
       ) : null}
@@ -495,13 +494,14 @@ function RowMenu({ onRename, onDelete }: { onRename?: () => void; onDelete?: () 
       <DropdownMenu.Trigger asChild>
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          className="hidden rounded p-0.5 text-cu-text-tertiary hover:bg-cu-hover group-hover:block"
+          className="cu-row-action rounded p-0.5 text-cu-text-tertiary hover:bg-cu-hover"
+          aria-label="Opciones del elemento"
         >
           <Ellipsis className="h-3.5 w-3.5" />
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
-        <DropdownMenu.Content sideOffset={4} align="end" className="z-50 min-w-[150px] rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg">
+        <DropdownMenu.Content side="bottom" sideOffset={4} collisionPadding={8} align="end" className="z-50 min-w-[150px] rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg">
           {onRename && <MenuItem icon={<Pencil className="h-4 w-4" />} label="Rename" onSelect={onRename} />}
           {onDelete && <MenuItem icon={<Trash2 className="h-4 w-4" />} label="Delete" onSelect={onDelete} danger />}
         </DropdownMenu.Content>
