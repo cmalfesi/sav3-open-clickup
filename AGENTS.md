@@ -63,3 +63,7 @@ notices (e.g. the `middleware`→`proxy` rename already done in this repo).
 If you make a decision a future agent would otherwise re-litigate or accidentally
 undo (e.g. "we deliberately chose X over Y"), **write an ADR**. That's the single
 most valuable thing you can leave behind.
+
+## SAV3 release workflow
+
+For each implemented SAV3 change, bump the application version, document it in the release notes, and publish the corresponding sanitized source to this GitHub repository. Use a versioned pull request, verify CI before merging, and check main after the merge. Keep customer data, workspace-specific configuration, credentials, restored files, and private source history outside the public repository.

@@ -1,7 +1,7 @@
-# SAV3 · Open ClickUp — código de producción v7
+# SAV3 · Open ClickUp — código de producción v16
 
-Esta copia exporta el código de la versión 7 publicada en Sites, commit
-`7be2c1b5b5a947dc6e21aa0229124ce49679c6d8`, sobre el upstream
+Esta copia exporta el código compartible de la versión 16 publicada en Sites,
+sobre el upstream
 `goshops-com/open-clickup` (`fd92240fbcec674afed5096b61f9414d16d1b653`).
 
 Incluye ingreso por contraseña, invitaciones, roles, Settings, permisos por
@@ -272,7 +272,7 @@ En Editar dashboard, agregá tarjetas de indicadores, barras, torta, líneas, li
 
 Las agrupaciones soportan estados, responsables, prioridades, etiquetas, listas, fechas y campos personalizados. Los cálculos incluyen conteos, suma, promedio, mínimo, máximo y porcentaje de tareas completadas. Los campos vacíos no se convierten en cero. Al hacer clic en un indicador o grupo se pueden abrir las tareas correspondientes.
 
-Compartir un dashboard no comparte las tareas: cada usuario ve sus propios datos autorizados. El panel permite actualización manual, individual por tarjeta o automática cada 30 segundos, pausada durante la edición. El historial identifica al autor de cada revisión; una versión desactualizada no puede sobrescribir otra más reciente. Archivar un panel es reversible desde Mostrar archivados.
+Compartir un dashboard no comparte las tareas: cada usuario ve sus propios datos autorizados. El panel permite actualización manual, individual por tarjeta o automática cada 30 segundos, pausada durante la edición. El historial identifica al autor de cada revisión; una versión desactualizada no puede sobrescribir otra más reciente. Archivar un panel es reversible desde Mostrar archivados. Su creador o un administrador puede eliminarlo definitivamente desde el listado de Dashboards. Las tareas y listas fuente se conservan.
 
 
 ### Controles de las tarjetas
@@ -297,3 +297,8 @@ Open ClickUp usa el símbolo original de SAV3 sobre un fondo ámbar como favicon
 Cada usuario conserva una configuración independiente por lista y por vista. Se recuerdan los grupos expandidos/comprimidos de Lista, Tabla y Board, las subtareas abiertas en Lista, filtros, orden, agrupación, la última vista elegida en cada lista y el mes/semana del Calendario. Un enlace con `?view=` abre esa vista explícita. Los valores compartidos existentes se usan como configuración inicial hasta que cada persona elige los propios.
 
 Las preferencias se guardan en la cuenta y pueden recuperarse en otro dispositivo después de sincronizar. Los cambios pendientes también se guardan localmente, cuando el navegador lo permite, para reintentarlos al volver o recuperar conexión. Si falla el guardado se muestra **Guardado personal pendiente** con un botón de reintento. Estas preferencias no cambian tareas ni la configuración del resto del equipo; incluso un invitado puede recordar su presentación sin ganar permisos de edición. La composición y los filtros del dashboard configurable siguen su flujo explícito de edición/guardado compartido.
+
+
+### Enlaces en tareas
+
+Las URLs escritas, pegadas o guardadas como texto en descripciones, comentarios y respuestas se abren en otra pestaña.
