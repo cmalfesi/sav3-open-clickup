@@ -1,7 +1,7 @@
 {
-  "production_version": 17,
+  "production_version": 18,
   "base_upstream_commit": "fd92240fbcec674afed5096b61f9414d16d1b653",
-  "runtime_code": "Public feature code for version 17. Deployment-only data and configuration are excluded.",
+  "runtime_code": "Public feature code for version 18. Deployment-only data and configuration are excluded.",
   "excluded": [
     "lib/restore-plan.json",
     "lib/restored-documents.json",
@@ -67,7 +67,7 @@
     },
     {
       "path": "app/(app)/settings/page.tsx",
-      "sha256": "c53fc5fd3e8798b13b2cfa559331ce6003a11829f4dbb1977571cc25752d50fd"
+      "sha256": "e84be3a31d303237ab1430ba7bb69800a17bd3ab57848143b491b8098053343e"
     },
     {
       "path": "app/activate/page.tsx",
@@ -339,7 +339,7 @@
     },
     {
       "path": "components/dashboard/builder.tsx",
-      "sha256": "47328d48d4b147776831d8c72ef49c3cfdb63ff14b4cd8f818a19c14f949d87b"
+      "sha256": "7721ba9df54d1d9217bf7aa395e2223be8233b4ca69b338e7cf26d7a240fb13d"
     },
     {
       "path": "components/dashboard/card-actions.tsx",
@@ -351,7 +351,7 @@
     },
     {
       "path": "components/dashboard/card.tsx",
-      "sha256": "a6c18b39b70b6c909266c25134fd42c8291e95f1f5bc8281af62738ef04a6877"
+      "sha256": "4e01129ea235d947062469210c65c8b964c745fecdf25d9d6626c3a43c2ad975"
     },
     {
       "path": "components/dashboard/delete-dashboard.tsx",
@@ -407,7 +407,7 @@
     },
     {
       "path": "components/sidebar/sidebar.tsx",
-      "sha256": "d47b4680b8b7cbb0ef8d6c1847baa97a5d748166fd0051acdb19424f289f7881"
+      "sha256": "486f03578e04779ee9ed9992bfba1f200c3e114868e29ad1a9e68cc7d925d9ed"
     },
     {
       "path": "components/status/status-manager.tsx",
@@ -707,7 +707,7 @@
     },
     {
       "path": "components/views/board-view.tsx",
-      "sha256": "e685360a018698d4ddeb09eead44356c398424964d533fe385f1547f22c175ed"
+      "sha256": "41c382c46bde821c6a3f6a3516f8a51055dd3d59a04860cfcf9d5152659ba3e4"
     },
     {
       "path": "components/views/bulk-bar.tsx",
@@ -739,11 +739,11 @@
     },
     {
       "path": "components/views/list-page.tsx",
-      "sha256": "8d08f76716a466ef4806de965c9a22802e7358cc5ba24a5b66a08eb892a60a2c"
+      "sha256": "4b0ce65ee3553d645f118e7e86d688b3555a20c02525ab3685548417c3817ac9"
     },
     {
       "path": "components/views/list-view.tsx",
-      "sha256": "59a9fb46435e016a5bdd7964b5a651ee4b45d65311afa6e5184a2688ff26f6f5"
+      "sha256": "8d7f930453efbaa8e9a8df4bc4d4c26b295130f78f6e9660c91839918e4dcf6d"
     },
     {
       "path": "components/views/personal-view.tsx",
@@ -751,7 +751,7 @@
     },
     {
       "path": "components/views/table-view.tsx",
-      "sha256": "04bc6405adfb8ba8c44a029eb6b726cb81a523a691c0f882d08df88a9d619d93"
+      "sha256": "95ebea8e806419a1a3026915ecef9493c06d7551cddf699d503108c8b0bc1295"
     },
     {
       "path": "components/views/template-picker.tsx",
@@ -760,6 +760,18 @@
     {
       "path": "components/views/view-placeholder.tsx",
       "sha256": "72754d8cb4bcaf4238886dbddcbc3a1082d2293725d37f502dfa88e23b3cfb1f"
+    },
+    {
+      "path": "components/views/view-task-search.tsx",
+      "sha256": "d227e640404eb581124ba5e742eafc64a1078bedce75f3e4315372f004ad21d6"
+    },
+    {
+      "path": "components/workspace-brand.tsx",
+      "sha256": "e0f26c54697b507cdd7e8b5b79964b056547eb1098d2aad5e5bd32919934c53c"
+    },
+    {
+      "path": "components/workspace-branding-settings.tsx",
+      "sha256": "102b1d97a56076b64f0dc589a0f2b2f90dc002d493a6a64a5dd0f6c9cc1ea176"
     },
     {
       "path": "components/workspace-context.tsx",
@@ -884,6 +896,10 @@
     {
       "path": "docs/releases/17.md",
       "sha256": "b273ee774125a232a7b30dc3ceadf9e29d33465c3eb9698c9cd05e58638e15d1"
+    },
+    {
+      "path": "docs/releases/18.md",
+      "sha256": "ba53af9530388cfce964e8283fd909668cfe865fca355464c91813574af1aef7"
     },
     {
       "path": "docs/releases/8.md",
@@ -1019,7 +1035,7 @@
     },
     {
       "path": "lib/dashboard-model.ts",
-      "sha256": "320e87807569976378b184c99537ef960f5eff9f1f69417f160cf91cfc6de3fa"
+      "sha256": "fc0f1cbc53d9efaf8aab802c9601138843e907c11c2c9d69588aaaa6dd9f7774"
     },
     {
       "path": "lib/dashboard-presentation.ts",
@@ -1148,6 +1164,18 @@
     {
       "path": "lib/view-state.ts",
       "sha256": "59fa003d40bddb734cec11244e067790f9d9f328958f3f1c6c0d8fd65dd96f0e"
+    },
+    {
+      "path": "lib/view-task-search.ts",
+      "sha256": "e51973ef3af90d2800c1ffe2a4814d914e11a2c18e1c4d965bce89b1c67aab3f"
+    },
+    {
+      "path": "lib/workspace-branding-service.ts",
+      "sha256": "7b394960923a585286022e899f701ac95c7545c50edeaa0c4de6191489d1d43e"
+    },
+    {
+      "path": "lib/workspace-branding.ts",
+      "sha256": "1a6be23263c2a32ce90fa5cdd934b81453ff9e831b386f132e0c2612eb2ee77d"
     },
     {
       "path": "next.config.ts",
@@ -1418,6 +1446,14 @@
       "sha256": "a361a243179442fff0e12008fa0e6fe11f13e94cda1f395cc703065623f70cea"
     },
     {
+      "path": "tests/view-task-search.test.ts",
+      "sha256": "a307c978c2fafea8a5988e7b1b0525d466c63fdec9d1b3685f51d7b601649a8c"
+    },
+    {
+      "path": "tests/workspace-branding.d1.test.ts",
+      "sha256": "d5d2d5124a390e2097d31073ac182032f3a6aae75049ba64477aad4e4115a6ff"
+    },
+    {
       "path": "tsconfig.json",
       "sha256": "86ea80e56d4b2008f738b55cb4df583a7a426c39c83ceb5e3ce322abe5cb986a"
     },
@@ -1439,14 +1475,14 @@
     },
     {
       "path": "worker/index.ts",
-      "sha256": "09674feee7f4c8ce6d7cb0d6ef830cc9e9cc3dd78a1fa3adddd2351c6b39462e"
+      "sha256": "4196b857903d3a9536d0de6bb382944073aa92d1f35abf5215ccd4e5b0e30d70"
     }
   ],
   "validation": {
-    "production_tests": 119,
+    "production_tests": 124,
     "typescript": "passed",
     "production_build": "passed",
     "changed_file_lint": "zero errors",
-    "browser": "Synthetic confirmation menu QA: keyboard, cancel, retry and fallback selection."
+    "browser": "Synthetic local search, Escape focus restoration and immediate branding update."
   }
 }

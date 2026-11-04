@@ -12,7 +12,6 @@ import {
   ChartNoAxesGantt,
   Table2,
   Plus,
-  Search,
   Users,
   Ellipsis,
   Star,
@@ -22,6 +21,8 @@ import {
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TemplatePicker } from "@/components/views/template-picker";
+import { ViewTaskSearch } from "@/components/views/view-task-search";
+import { normalizeTaskSearch, searchTaskRows } from "@/lib/view-task-search";
 import { DeleteViewMenu } from "@/components/views/delete-view-menu";
 import type { ListData } from "@/lib/queries";
 import { useList, useCreateTask, useToggleFavorite } from "@/lib/hooks";
@@ -66,6 +67,7 @@ function ListPageContent({ listId }: { listId: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const taskParam = searchParams.get("task");
+  const [search, setSearch] = useState({ viewId: "", text: "" });
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [statusMgr, setStatusMgr] = useState(false);
@@ -75,6 +77,8 @@ function ListPageContent({ listId }: { listId: string }) {
   const views = data?.list.views ?? [];
   const activeView = views.find((v) => v.id === activeViewId) ?? views[0];
 
+  const searchText = search.viewId === activeView?.id ? search.text : "";
+  const searchQuery = normalizeTaskSearch(searchText);
   const presentation=activeView?personal.data?.views[activeView.id]??{}:{};
   const vs=presentation.viewState??viewStateFromConfig(activeView?.config);
   // Restore an explicit link first, then this user's last selected view.
@@ -89,6 +93,7 @@ function ListPageContent({ listId }: { listId: string }) {
     if(activeView?.type==='DASHBOARD'&&hasDrafts()){setViewError('Guardá o descartá los cambios del dashboard antes de cambiar de vista.');return;}
     setViewError('');
     setActiveViewId(view.id);
+    setSearch({ viewId: "", text: "" });
     window.history.replaceState(null,"",pathname+"?view="+encodeURIComponent(view.id));
     personal.update({views:{},activeViewId:view.id});
   }
@@ -116,6 +121,7 @@ function ListPageContent({ listId }: { listId: string }) {
       deletableViewIds: (previous.deletableViewIds ?? []).filter(id => id !== viewId),
     });
     setActiveViewId(next?.id ?? null);
+    setSearch({ viewId: "", text: "" });
     const url = new URL(window.location.href);
     if (next) {
       url.searchParams.set("view", next.id);
@@ -141,8 +147,8 @@ function ListPageContent({ listId }: { listId: string }) {
   }
 
   const shownData = useMemo(
-    () => (data ? { ...data, tasks: applyViewState(data.tasks, vs) } : data),
-    [data, vs],
+    () => data ? { ...data, tasks: searchTaskRows(applyViewState(data.tasks, vs), searchQuery, activeView?.type === "LIST") } : data,
+    [data, vs, searchQuery, activeView?.type],
   );
 
   async function addTask() {
@@ -252,7 +258,7 @@ function ListPageContent({ listId }: { listId: string }) {
           <DropdownMenu.Root><DropdownMenu.Trigger asChild><button disabled={viewBusy} className="flex shrink-0 items-center gap-1 px-2 py-2 text-[13px] text-cu-text-tertiary hover:text-cu-text"><Plus className="h-4 w-4" /> Vista</button></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className="z-50 rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg"><DropdownMenu.Item className="cursor-pointer rounded p-3 text-sm outline-none hover:bg-cu-hover" onSelect={async()=>{setViewBusy(true);setViewError('');try{const created=await apiSend<{id:string;viewId:string}>('/api/dashboards','POST',{name:'Nuevo dashboard',sources:[listId],listId});await qc.invalidateQueries({queryKey:['list',listId]});setActiveViewId(created.viewId);personal.update({views:{},activeViewId:created.viewId});window.history.replaceState(null,'',pathname+'?view='+created.viewId);}catch(e){setViewError((e as Error).message);}finally{setViewBusy(false);}}}>Dashboard configurable</DropdownMenu.Item></DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root>
         </div>
 
-        <div className="flex items-center gap-1 text-cu-text-secondary">
+        <div className="flex min-w-0 flex-wrap items-center gap-1 text-cu-text-secondary">
           {activeView && data.deletableViewIds?.includes(activeView.id) && (
             <DeleteViewMenu key={activeView.id} name={activeView.name}
               dashboard={activeView.type === "DASHBOARD"} onDelete={() => removeView(activeView.id)} />
@@ -262,9 +268,8 @@ function ListPageContent({ listId }: { listId: string }) {
           <GroupMenu state={vs} onChange={updateVs} />
           <FilterMenu state={vs} onChange={updateVs} tasks={data.tasks} />
           <SortMenu state={vs} onChange={updateVs} />
-          <button className="rounded p-1.5 hover:bg-cu-hover">
-            <Search className="h-4 w-4" />
-          </button>
+          {activeView && <ViewTaskSearch key={activeView.id} value={searchText}
+            onChange={text => setSearch({ viewId: activeView.id, text })} />}
           <button
             onClick={addTask}
             className="ml-1 flex items-center gap-1 rounded bg-cu-purple px-2.5 py-1.5 text-[13px] font-medium text-white hover:bg-cu-purple-dark"
@@ -278,7 +283,7 @@ function ListPageContent({ listId }: { listId: string }) {
       {personal.saveError&&<p role="status" className="flex items-center gap-2 px-4 py-2 text-xs text-cu-text-secondary">Guardado personal pendiente.<button className="text-cu-purple underline" onClick={personal.retry}>Reintentar</button></p>}
       <PersonalView key={activeView?.id} state={presentation} groupBy={vs.groupBy} update={patch=>{if(activeView)personal.update({views:{[activeView.id]:patch}});}}>
       {/* active view */}
-      {activeView?.type==='DASHBOARD' ? <DashboardBuilder key={activeView.id} dashboardId={String((activeView.config as {dashboardId?:string}|null)?.dashboardId??'')}/> : shownData && shownData.tasks.length === 0 ? (
+      {activeView?.type==='DASHBOARD' ? <DashboardBuilder key={activeView.id} taskSearch={searchText} dashboardId={String((activeView.config as {dashboardId?:string}|null)?.dashboardId??'')}/> : shownData && shownData.tasks.length === 0 ? (
         data.tasks.length === 0 ? (
           <EmptyState
             icon={<ClipboardList className="h-6 w-6" />}
@@ -296,17 +301,17 @@ function ListPageContent({ listId }: { listId: string }) {
         ) : (
           <EmptyState
             icon={<SearchX className="h-6 w-6" />}
-            title="No tasks match your filters"
-            subtitle="Try clearing or adjusting the active filters."
+            title={searchQuery ? "No encontramos tareas en esta vista" : "No tasks match your filters"}
+            subtitle={searchQuery ? "Probá otro título o ajustá los filtros de la vista." : "Try clearing or adjusting the active filters."}
           />
         )
       ) : (
         <>
-          {activeView?.type === "LIST" && <ListView sorting={!!vs.sort.field} data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
-          {activeView?.type === "BOARD" && <BoardView sorting={!!vs.sort.field} data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
+          {activeView?.type === "LIST" && <ListView searching={!!searchQuery} sorting={!!vs.sort.field || !!searchQuery} data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
+          {activeView?.type === "BOARD" && <BoardView searching={!!searchQuery} sorting={!!vs.sort.field || !!searchQuery} data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
           {activeView?.type === "CALENDAR" && <CalendarView data={shownData!} onOpenTask={setOpenTaskId} />}
           {activeView?.type === "GANTT" && <GanttView data={shownData!} onOpenTask={setOpenTaskId} />}
-          {activeView?.type === "TABLE" && <TableView data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
+          {activeView?.type === "TABLE" && <TableView searching={!!searchQuery} data={shownData!} onOpenTask={setOpenTaskId} groupBy={vs.groupBy} />}
         </>
       )}
 

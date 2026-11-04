@@ -1,6 +1,6 @@
 {
   "name": "sav3-open-clickup-lab",
-  "version": "0.10.3",
+  "version": "0.10.4",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
