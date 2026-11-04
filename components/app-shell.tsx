@@ -10,6 +10,7 @@ import { Sidebar } from "@/components/sidebar/sidebar";
 import { CommandPalette } from "@/components/command-palette";
 import { ChangesNotice } from "@/components/changes-notice";
 import { ShortcutsHelp } from "@/components/shortcuts-help";
+import { version } from "@/package.json";
 
 function isTyping(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
@@ -66,7 +67,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (error || !data)
     return (
       <div className="flex h-full items-center justify-center text-sm text-cu-text-secondary">
-        No pudimos abrir el espacio. Recargá la página o consultá el informe de importación.
+        No pudimos abrir el espacio. Recargá la página para volver a intentar.
       </div>
     );
 
@@ -110,7 +111,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <span className="text-[14px] font-semibold">Open ClickUp</span>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cu-border bg-cu-purple-light px-4 py-2 text-[12px] text-cu-text"><span>SAV3 · Espacio del equipo · {({OWNER:"Propietario",ADMIN:"Administrador",MEMBER:"Miembro",GUEST:"Invitado · solo lectura"} as Record<string,string>)[data.authorization.role]}</span><span role="status" aria-live="polite">{pendingWrites > 0 ? "Guardando…" : ""}</span>{data.authorization.admin&&<a href="/lab-report" className="font-semibold text-cu-purple hover:underline">Ver importación y diferencias</a>}</div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-cu-border bg-cu-purple-light px-4 py-2 text-[12px] text-cu-text">
+            <span>SAV3 · Espacio del equipo · {({OWNER:"Propietario",ADMIN:"Administrador",MEMBER:"Miembro",GUEST:"Invitado · solo lectura"} as Record<string,string>)[data.authorization.role]}</span>
+            <span role="status" aria-live="polite">{pendingWrites > 0 ? "Guardando…" : ""}</span>
+            <span className="ml-auto shrink-0 whitespace-nowrap font-medium tabular-nums">Versión {version}</span>
+          </div>
           {children}
         </main>
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
