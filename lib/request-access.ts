@@ -51,9 +51,9 @@ export async function authorizeResourceRequest(req: Request, db: D1Database, a: 
                 denied();
             return;
         }
-        if (['documents', 'lab-report'].includes(parts[0]) && !access.admin)
+        if (parts[0] === 'documents' && !access.admin)
             denied();
-        if (!['home', 'settings', 'dashboards', 'documents', 'lab-report', '_next'].includes(parts[0]))
+        if (!['home', 'settings', 'dashboards', 'documents', '_next'].includes(parts[0]))
             denied();
         return;
     }

@@ -11,7 +11,7 @@ async function state() {
 export async function GET() {
   await requireRole("ADMIN");
   const s=await state();
-  return Response.json({cursor:s?.cursor??0,total:plan.operations.length,complete:!!s?.complete,report:plan.report});
+  return Response.json({cursor:s?.cursor??0,total:plan.operations.length,complete:!!s?.complete});
 }
 export async function POST() {
   const user = await getChatGPTUser();

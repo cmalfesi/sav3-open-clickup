@@ -15,6 +15,8 @@ import { authorizeResourceRequest } from "../lib/request-access";
 const worker = {
   async fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext<{ CONNECTORS?: ConnectorBinding }>) {
     const url = new URL(request.url);
+    if (url.pathname.replace(/\/$/, "") === "/lab-report")
+      return privateResponse(new Response("Not found", { status: 404 }));
     const access = publicAccess(url.pathname);
     if (access === "asset") {
       return env.ASSETS?.fetch(request) ?? new Response("Not found", { status: 404 });
