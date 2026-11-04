@@ -22,10 +22,12 @@ export function TableView({
   data,
   onOpenTask,
   groupBy = "status",
+  searching=false,
 }: {
   data: ListData;
   onOpenTask: (id: string) => void;
   groupBy?: GroupBy;
+  searching?:boolean;
 }) {
   const { list, tasks } = data;
   const statuses = list.statuses;
@@ -78,6 +80,7 @@ export function TableView({
           <TableGroup
             key={group.id}
             group={group}
+            searching={searching}
             statuses={statuses}
             firstStatusId={statuses[0]?.id}
             tasks={group.tasks}
@@ -112,6 +115,7 @@ export function TableView({
 
 function TableGroup({
   group,
+  searching,
   statuses,
   firstStatusId,
   tasks,
@@ -124,6 +128,7 @@ function TableGroup({
   onUpdate,
 }: {
   group: TaskGroup;
+  searching: boolean;
   statuses: StatusModel[];
   firstStatusId: string | undefined;
   tasks: TaskWithRelations[];
@@ -135,7 +140,8 @@ function TableGroup({
   onOpenTask: (id: string) => void;
   onUpdate: (taskId: string, patch: Record<string, unknown>) => void;
 }) {
-  const [collapsed, setCollapsed] = useGroupCollapsed(group.id);
+  const [savedCollapse, setCollapsed] = useGroupCollapsed(group.id);
+  const collapsed = !searching && savedCollapse;
   const [visible, setVisible] = useState(PAGE_SIZE);
   const create = useCreateTask(listId);
   const shown = tasks.slice(0, visible);
@@ -144,7 +150,7 @@ function TableGroup({
   return (
     <div>
       <div className="flex items-center gap-2 bg-cu-sidebar/50 px-3 py-1.5">
-        <button aria-label={(collapsed?"Expandir ":"Comprimir ")+group.label} aria-expanded={!collapsed} onClick={() => setCollapsed((c) => !c)} className="text-cu-text-tertiary hover:text-cu-text">
+        <button aria-label={(collapsed?"Expandir ":"Comprimir ")+group.label} aria-expanded={!collapsed} disabled={searching} onClick={() => setCollapsed((c) => !c)} className="text-cu-text-tertiary hover:text-cu-text">
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         <span

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { matchesTaskTitle } from './view-task-search';
 const ids=z.array(z.string().min(1).max(200)).max(200);
 export const filterSchema=z.object({
  statuses:ids.default([]),priorities:ids.default([]),assignees:ids.default([]),tags:ids.default([]),
@@ -43,8 +44,8 @@ export function aggregate(tasks:DashboardTask[],metric:DashboardCard['metric'],f
  if(!ns.length)return null;return metric==='sum'?ns.reduce((a,b)=>a+b,0):metric==='avg'?ns.reduce((a,b)=>a+b,0)/ns.length:metric==='min'?Math.min(...ns):Math.max(...ns);
 }
 export type CardResult={value:number|null;count:number;rows:{key:string;name:string;value:number|null;taskIds:string[];color?:string}[];tasks:DashboardTask[]};
-export function calculateCard(config:DashboardConfig,card:DashboardCard,data:DashboardData):CardResult{
- const tasks=filterTasks(filterTasks(data.tasks.filter(t=>!config.sources.length||config.sources.includes(t.listId)),config.filter),card.filter),map=new Map<string,{name:string;tasks:DashboardTask[];color?:string}>();
+export function calculateCard(config:DashboardConfig,card:DashboardCard,data:DashboardData,taskSearch=""):CardResult{
+ const tasks=filterTasks(filterTasks(data.tasks.filter(t=>(!config.sources.length||config.sources.includes(t.listId))&&(!taskSearch||matchesTaskTitle(t.name,taskSearch))),config.filter),card.filter),map=new Map<string,{name:string;tasks:DashboardTask[];color?:string}>();
  const option=(list:Option[],id:string)=>list.find(o=>o.id===id)?.name??id;
  for(const t of tasks){let groups:{id:string;name:string;color?:string}[]=[];
   if(card.groupBy==='status')groups=[{id:t.statusId,name:t.statusName,color:t.statusColor}];

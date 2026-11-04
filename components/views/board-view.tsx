@@ -42,11 +42,13 @@ export function BoardView({
   onOpenTask,
   groupBy = "status",
   sorting=false,
+  searching=false,
 }: {
   data: ListData;
   onOpenTask: (id: string) => void;
   groupBy?: GroupBy;
   sorting?:boolean;
+  searching?:boolean;
 }) {
   const { list, tasks } = data;
   const statuses = list.statuses;
@@ -157,7 +159,7 @@ export function BoardView({
       >
         <div className="flex h-full items-start gap-3">
           {groups.map((group) =>
-            collapsed.has(group.id) ? (
+            !searching && collapsed.has(group.id) ? (
               <CollapsedColumn
                 key={group.id}
                 group={group}
@@ -173,7 +175,7 @@ export function BoardView({
                 firstStatusId={firstStatusId}
                 status={groupBy === "status" ? statusById.get(group.id) : undefined}
                 onOpenTask={onOpenTask}
-                onCollapse={() => toggleCollapse(group.id)}
+                onCollapse={searching ? undefined : () => toggleCollapse(group.id)}
               />
             ),
           )}
@@ -215,7 +217,7 @@ function Column({
   firstStatusId: string | undefined;
   status: StatusModel | undefined;
   onOpenTask: (id: string) => void;
-  onCollapse: () => void;
+  onCollapse?: () => void;
 }) {
   const create = useCreateTask(listId);
   const { setNodeRef } = useSortable({ id: group.id, data: { type: "column" } });
@@ -225,7 +227,7 @@ function Column({
   return (
     <div className="flex h-full w-[280px] shrink-0 flex-col">
       <div className="group/col mb-2 flex items-center gap-2 px-1">
-        <button onClick={onCollapse} className="rounded p-0.5 text-cu-text-tertiary hover:bg-cu-hover hover:text-cu-text" title="Collapse">
+        <button onClick={onCollapse} disabled={!onCollapse} className="rounded p-0.5 text-cu-text-tertiary hover:bg-cu-hover hover:text-cu-text" title="Collapse">
           <ChevronsRightLeft className="h-3.5 w-3.5" />
         </button>
         <span

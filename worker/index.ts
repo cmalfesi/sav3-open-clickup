@@ -1,6 +1,7 @@
 import handler from "vinext/server/fetch-handler";
 import { runWithConnectorBinding } from "../lib/connector-context";
 import type { ConnectorBinding } from "../lib/connector-contract.mjs";
+import { workspaceBrandingRoute } from "../lib/workspace-branding-service";
 import { dashboardRoute } from "../lib/dashboard-service";
 import { viewPreferenceRoute } from "../lib/view-preference-service";
 import { integrationRoute } from "../lib/integration-access";
@@ -22,6 +23,8 @@ const worker = {
     const loaded = await loadActor(env.DB, request);
     const isMcp=url.pathname==='/mcp'||url.pathname==='/api/integrations/mcp';
     const actor=loaded?{...loaded,channel:(isMcp?'mcp':loaded.kind==='token'?'api':'web') as 'mcp'|'api'|'web'}:null;
+    const branding=await workspaceBrandingRoute(request,env.DB,env.BUCKET,actor);
+    if(branding)return privateResponse(branding);
     const integration=await integrationRoute(request,env.DB,actor);
     if(integration)return privateResponse(integration);
     const preferenceResponse=await viewPreferenceRoute(request,env.DB,actor);

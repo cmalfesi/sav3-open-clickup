@@ -1,5 +1,7 @@
 "use client";
 
+import { WorkspaceBrand } from "@/components/workspace-brand";
+import { workspaceLogoVersion } from "@/lib/workspace-branding";
 import { useState } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { useSiteRouter as useRouter } from "@/lib/site-navigation";
@@ -50,13 +52,8 @@ export function Sidebar({ onCollapse }: { onCollapse?: () => void }) {
       {/* Workspace header */}
       <div className="flex items-center gap-2 px-3 py-2.5">
         <button className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 hover:bg-cu-hover-strong">
-          <span
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-bold text-white"
-            style={{ backgroundColor: workspace.color }}
-          >
-            {workspace.name[0]}
-          </span>
-          <span className="truncate text-sm font-semibold">{workspace.name}</span>
+          <WorkspaceBrand name={workspace.name} color={workspace.color}
+            logo={workspaceLogoVersion(workspace.avatarUrl) ? workspace.avatarUrl : null} />
           <ChevronDown className="ml-auto h-3.5 w-3.5 text-cu-text-tertiary" />
         </button>
         <button

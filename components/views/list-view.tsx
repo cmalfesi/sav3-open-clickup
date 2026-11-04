@@ -51,11 +51,13 @@ export function ListView({
   onOpenTask,
   groupBy = "status",
   sorting=false,
+  searching=false,
 }: {
   data: ListData;
   onOpenTask: (taskId: string) => void;
   groupBy?: GroupBy;
   sorting?:boolean;
+  searching?:boolean;
 }) {
   const { list, tasks } = data;
   const statuses = list.statuses;
@@ -171,6 +173,7 @@ export function ListView({
           firstStatusId={statuses[0]?.id}
           gridStyle={gridStyle}
           sortable={sortable}
+          searching={searching}
           selected={selected}
           onToggleSelect={toggleSelect}
           onOpenTask={onOpenTask}
@@ -249,6 +252,7 @@ function Group({
   firstStatusId,
   gridStyle,
   sortable,
+  searching,
   selected,
   onToggleSelect,
   onOpenTask,
@@ -261,23 +265,25 @@ function Group({
   firstStatusId: string | undefined;
   gridStyle: React.CSSProperties;
   sortable: boolean;
+  searching: boolean;
   selected: Set<string>;
   onToggleSelect: (id: string) => void;
   onOpenTask: (id: string) => void;
   onUpdate: (taskId: string, patch: Record<string, unknown>) => void;
 }) {
-  const [collapsed, setCollapsed] = useGroupCollapsed(group.id);
+  const [savedCollapse, setCollapsed] = useGroupCollapsed(group.id);
+  const collapsed = !searching && savedCollapse;
   const [adding, setAdding] = useState(false);
   const [visible, setVisible] = useState(PAGE_SIZE);
 
-  const rowProps = { statuses, customFields, gridStyle, selected, onToggleSelect, onOpenTask, onUpdate };
+  const rowProps = { searching, statuses, customFields, gridStyle, selected, onToggleSelect, onOpenTask, onUpdate };
   const shown = group.tasks.slice(0, visible);
   const hidden = group.tasks.length - shown.length;
 
   return (
     <div className="border-b border-cu-border/70">
       <div className="flex items-center gap-2 px-3 py-2">
-        <button aria-label={(collapsed?"Expandir ":"Comprimir ")+group.label} aria-expanded={!collapsed} onClick={() => setCollapsed((c) => !c)} className="text-cu-text-tertiary hover:text-cu-text">
+        <button aria-label={(collapsed?"Expandir ":"Comprimir ")+group.label} aria-expanded={!collapsed} disabled={searching} onClick={() => setCollapsed((c) => !c)} className="text-cu-text-tertiary hover:text-cu-text">
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         <span
@@ -329,6 +335,7 @@ function Group({
 }
 
 type RowProps = {
+  searching: boolean;
   statuses: StatusModel[];
   customFields: CustomFieldWithOptions[];
   gridStyle: React.CSSProperties;
@@ -383,6 +390,7 @@ function SortableRow({ task, rowProps }: { task: TaskWithRelations; rowProps: Ro
 
 function TaskRow({
   task,
+  searching,
   statuses,
   customFields,
   gridStyle,
@@ -393,6 +401,7 @@ function TaskRow({
   handle,
 }: {
   task: TaskWithRelations;
+  searching: boolean;
   statuses: StatusModel[];
   customFields: CustomFieldWithOptions[];
   gridStyle: React.CSSProperties;
@@ -403,7 +412,8 @@ function TaskRow({
   handle?: React.ReactNode;
 }) {
   const isSelected = selected.has(task.id);
-  const [expanded, setExpanded] = useTaskExpanded(task.id);
+  const [savedExpansion, setExpanded] = useTaskExpanded(task.id);
+  const expanded = searching || savedExpansion;
   const [renaming, setRenaming] = useState(false);
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setField = useSetFieldValue(task.listId);
@@ -456,7 +466,7 @@ function TaskRow({
             {hasSubtasks ? (
               <button
                 aria-label={(expanded?"Comprimir subtareas de ":"Expandir subtareas de ")+task.name}
-                aria-expanded={expanded}
+                aria-expanded={expanded} disabled={searching}
                 onClick={(e) => { e.stopPropagation(); setExpanded((x) => !x); }}
                 className="text-cu-text-tertiary hover:text-cu-text"
               >
