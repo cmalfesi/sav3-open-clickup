@@ -33,6 +33,7 @@ import { CustomFieldControl } from "@/components/views/custom-field-control";
 import { Avatar } from "@/components/ui/avatar";
 import { TagControl } from "@/components/menus/tag-control";
 import { RichEditor, RichText } from "@/components/ui/rich-editor";
+import { linkifyRichText } from "@/lib/rich-text-links";
 import { Checklists } from "@/components/task/checklists";
 import { CommentReactions } from "@/components/task/comment-reactions";
 import { TaskMenu } from "@/components/task/save-template";
@@ -70,7 +71,7 @@ export function TaskModal({
   const update = { mutate: (patch:TaskPatch) => taskUpdate.mutate({taskId,patch}) };
 
   const addComment = useMutation({
-    mutationFn: (body: string) => apiSend(`/api/tasks/${taskId}/comments`, "POST", { body }),
+    mutationFn: (body: string) => apiSend(`/api/tasks/${taskId}/comments`, "POST", { body: linkifyRichText(body) }),
     onSuccess: invalidate,
   });
 
@@ -526,7 +527,7 @@ function CommentItem({
   const isOwn = comment.user.id === currentUserId;
 
   const save = useMutation({
-    mutationFn: (body: string) => apiSend(`/api/comments/${comment.id}`, "PATCH", { body }),
+    mutationFn: (body: string) => apiSend(`/api/comments/${comment.id}`, "PATCH", { body: linkifyRichText(body) }),
     onSuccess: () => {
       setEditing(false);
       onChange();
@@ -537,7 +538,7 @@ function CommentItem({
     onSuccess: onChange,
   });
   const reply = useMutation({
-    mutationFn: (body: string) => apiSend(`/api/tasks/${taskId}/comments`, "POST", { body, parentId: comment.id }),
+    mutationFn: (body: string) => apiSend(`/api/tasks/${taskId}/comments`, "POST", { body: linkifyRichText(body), parentId: comment.id }),
     onSuccess: () => {
       setReplying(false);
       setReplyHtml("");

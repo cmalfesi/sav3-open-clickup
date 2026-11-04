@@ -8,9 +8,11 @@ const decode=(v:unknown)=>{if(typeof v!=='string')return v;try{return JSON.parse
 async function rows<T>(db:D1Database,sql:string,...args:(string|number)[]){return(await db.prepare(sql).bind(...args).all<T>()).results;}
 const select='SELECT d.*,c.config,c.revision,c.archived,c.updatedAt FROM Dashboard d LEFT JOIN DashboardDocument c ON c.dashboardId=d.id';
 const edit=(a:Actor,id:string)=>a.role!=='GUEST'&&a.tokenScope!=='read'&&a.access.can('DASHBOARD',id,'EDIT');
+const manage=(a:Actor,createdBy:string)=>a.access.admin||a.user.id===createdBy;
+const canDelete=(a:Actor,d:RecordRow)=>edit(a,d.id)&&manage(a,d.createdBy);
 export async function readDashboard(db:D1Database,a:Actor,id:string){
  a.access.assert('DASHBOARD',id);const row=await db.prepare(select+' WHERE d.id=?').bind(id).first<RecordRow>();if(!row)throw new AccessError(404,'No existe el dashboard.');
- return {id:row.id,name:row.name,config:row.config?dashboardSchema.parse(JSON.parse(row.config)):emptyDashboard(JSON.parse(row.sources)),revision:row.revision??0,archived:!!row.archived,updatedAt:row.updatedAt??row.createdAt,canEdit:edit(a,id),canShare:a.access.admin||a.user.id===row.createdBy};
+ return {id:row.id,name:row.name,config:row.config?dashboardSchema.parse(JSON.parse(row.config)):emptyDashboard(JSON.parse(row.sources)),revision:row.revision??0,archived:!!row.archived,updatedAt:row.updatedAt??row.createdAt,canEdit:edit(a,id),canShare:manage(a,row.createdBy)};
 }
 export async function dashboardDataset(db:D1Database,a:Actor,config:DashboardConfig):Promise<DashboardData>{
  const rs=await db.batch([
@@ -35,6 +37,28 @@ export async function dashboardDataset(db:D1Database,a:Actor,config:DashboardCon
  return {tasks,lists:(rs[1].results as DashboardData['lists']).filter(l=>listIds.has(l.id)),statuses:(rs[2].results as DashboardData['statuses']).filter(s=>listIds.has(s.listId!)),members:[...members.values()],tags:[...tags.values()],fields:(rs[5].results as {id:string;listId:string;name:string;type:string}[]).filter(f=>listIds.has(f.listId)).map(f=>({...f,options:options.filter(o=>o.customFieldId===f.id)})),activities,refreshedAt:new Date().toISOString()};
 }
 async function validateSources(a:Actor,config:DashboardConfig){for(const id of config.sources)if(!a.access.visibleList(id))throw new AccessError(403,'Una fuente seleccionada no está disponible con tus permisos.');}
+export async function createDashboard(
+ db:D1Database,a:Actor,name:string,config:DashboardConfig,listId?:string,
+ ids:{id:string;viewId:string}={id:randomUUID(),viewId:randomUUID()},
+){
+ if(a.role==='GUEST'||a.tokenScope==='read')throw new AccessError(403,'Solo lectura.');
+ await validateSources(a,config);
+ if(listId)a.access.assert('LIST',listId,'EDIT');
+ const {id}=ids,now=Date.now(),json=JSON.stringify(config);
+ const writes=[
+  db.prepare('INSERT INTO Dashboard (id,name,sources,createdBy,createdAt) VALUES (?,?,?,?,?)').bind(id,name,JSON.stringify(config.sources),a.user.id,now),
+  db.prepare('INSERT INTO DashboardDocument (dashboardId,config,revision,writeKey,updatedAt) VALUES (?,?,1,?,?)').bind(id,json,randomUUID(),now),
+  db.prepare("INSERT INTO ResourcePolicy (resourceType,resourceId,restricted) VALUES ('DASHBOARD',?,1)").bind(id),
+  db.prepare("INSERT INTO ResourceGrant (userId,resourceType,resourceId,level) VALUES (?,'DASHBOARD',?,'EDIT')").bind(a.user.id,id),
+  db.prepare('INSERT INTO DashboardHistory (id,dashboardId,actorId,revision,name,config,createdAt) VALUES (?,?,?,1,?,?,?)').bind(randomUUID(),id,a.user.id,name,json,now),
+ ];
+ const viewId=listId?ids.viewId:undefined;
+ if(listId&&viewId)writes.push(db.prepare(
+  "INSERT INTO View (id,listId,name,type,config,position) VALUES (?,?,?,'DASHBOARD',?,(SELECT coalesce(max(position),0)+1 FROM View WHERE listId=?))",
+ ).bind(viewId,listId,name,JSON.stringify({dashboardId:id}),listId));
+ await db.batch(writes);
+ return {id,viewId};
+}
 export async function dashboardRoute(req:Request,db:D1Database,a:Actor|null):Promise<Response|null>{
  const path=new URL(req.url).pathname;if(!/^\/api\/dashboards(?:\/|$)/.test(path))return null;
  try{
@@ -44,18 +68,30 @@ export async function dashboardRoute(req:Request,db:D1Database,a:Actor|null):Pro
   const [, , ,id,action]=path.split('/');
   if(!id&&req.method==='GET'){
    const all=await rows<RecordRow>(db,select+' ORDER BY d.createdAt DESC');const tasks=await rows<{id:string;listId:string;type:string}>(db,'SELECT t.id,t.listId,s.type FROM Task t JOIN Status s ON s.id=t.statusId WHERE t.archived=0');
-   return Response.json({admin:a.access.admin,canCreate:a.role!=='GUEST',dashboards:all.filter(d=>a.access.can('DASHBOARD',d.id)).map(d=>{const sources=JSON.parse(d.sources) as string[],ts=tasks.filter(t=>a.access.can('TASK',t.id)&&(!sources.length||sources.includes(t.listId)));return {id:d.id,name:d.name,total:ts.length,done:ts.filter(t=>['DONE','CLOSED'].includes(t.type)).length,archived:!!d.archived,canEdit:edit(a,d.id)};})});
+   return Response.json({admin:a.access.admin,canCreate:a.role!=='GUEST',dashboards:all.filter(d=>a.access.can('DASHBOARD',d.id)).map(d=>{const sources=JSON.parse(d.sources) as string[],ts=tasks.filter(t=>a.access.can('TASK',t.id)&&(!sources.length||sources.includes(t.listId)));return {id:d.id,name:d.name,total:ts.length,done:ts.filter(t=>['DONE','CLOSED'].includes(t.type)).length,archived:!!d.archived,canEdit:edit(a,d.id),canDelete:canDelete(a,d)};})});
   }
   if(Number(req.headers.get('Content-Length')??0)>262144)throw new AccessError(413,'Configuración demasiado grande.');
   const raw=mutating?await req.text():'';if(raw.length>262144)throw new AccessError(413,'Configuración demasiado grande.');
   let body:unknown={};try{body=raw?JSON.parse(raw):{};}catch{throw new AccessError(400,'JSON inválido.');}
   if(!id&&req.method==='POST'){
    const p=z.object({name:z.string().trim().min(1).max(100),sources:z.array(z.string()).max(200).default([]),listId:z.string().optional()}).parse(body);
-   const config=emptyDashboard(p.sources);await validateSources(a,config);if(p.listId)a.access.assert('LIST',p.listId,'EDIT');
-   const key=randomUUID(),now=Date.now(),writes=[db.prepare('INSERT INTO Dashboard (id,name,sources,createdBy,createdAt) VALUES (?,?,?,?,?)').bind(key,p.name,JSON.stringify(config.sources),a.user.id,now),db.prepare('INSERT INTO DashboardDocument (dashboardId,config,revision,writeKey,updatedAt) VALUES (?,?,1,?,?)').bind(key,JSON.stringify(config),randomUUID(),now),db.prepare("INSERT INTO ResourcePolicy (resourceType,resourceId,restricted) VALUES ('DASHBOARD',?,1)").bind(key),db.prepare("INSERT INTO ResourceGrant (userId,resourceType,resourceId,level) VALUES (?,'DASHBOARD',?,'EDIT')").bind(a.user.id,key),db.prepare('INSERT INTO DashboardHistory (id,dashboardId,actorId,revision,name,config,createdAt) VALUES (?,?,?,1,?,?,?)').bind(randomUUID(),key,a.user.id,p.name,JSON.stringify(config),now)];
-   let viewId:string|undefined;
-   if(p.listId){viewId=randomUUID();writes.push(db.prepare("INSERT INTO View (id,listId,name,type,config,position) VALUES (?,?,?,'DASHBOARD',?,(SELECT coalesce(max(position),0)+1 FROM View WHERE listId=?))").bind(viewId,p.listId,p.name,JSON.stringify({dashboardId:key}),p.listId));}
-   await db.batch(writes);return Response.json({id:key,viewId});
+   const config=emptyDashboard(p.sources);
+   return Response.json(await createDashboard(db,a,p.name,config,p.listId));
+  }
+  if(id&&!action&&req.method==='DELETE'){
+   a.access.assert('DASHBOARD',id);
+   const dashboard=await db.prepare('SELECT * FROM Dashboard WHERE id=?').bind(id).first<RecordRow>();
+   if(!dashboard)throw new AccessError(404,'No existe el dashboard.');
+   if(!canDelete(a,dashboard))throw new AccessError(403,'Solo el creador o un administrador puede eliminar el dashboard.');
+   const result=await db.batch([
+    db.prepare("DELETE FROM View WHERE type='DASHBOARD' AND json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.dashboardId')=?").bind(id),
+    db.prepare("DELETE FROM ResourceGrant WHERE resourceType='DASHBOARD' AND resourceId=?").bind(id),
+    db.prepare("DELETE FROM ResourcePolicy WHERE resourceType='DASHBOARD' AND resourceId=?").bind(id),
+    db.prepare("INSERT INTO AccessAudit (id,actorId,action,targetId,createdAt) SELECT ?,?,'dashboard.delete',id,? FROM Dashboard WHERE id=?").bind(randomUUID(),a.user.id,Date.now(),id),
+    db.prepare('DELETE FROM Dashboard WHERE id=?').bind(id),
+   ]);
+   if(!result[4].meta.changes)throw new AccessError(404,'No existe el dashboard.');
+   return Response.json({ok:true});
   }
   const current=await readDashboard(db,a,id);
   if(req.method==='GET'&&!action)return Response.json(current);
@@ -63,12 +99,17 @@ export async function dashboardRoute(req:Request,db:D1Database,a:Actor|null):Pro
   if(req.method==='GET'&&action==='history')return Response.json({history:await rows(db,'SELECT h.revision,h.createdAt,u.name actor FROM DashboardHistory h LEFT JOIN User u ON u.id=h.actorId WHERE dashboardId=? ORDER BY revision DESC LIMIT 50',id)});
   if(action==='share'){
    if(!current.canShare)throw new AccessError(403,'Solo el creador o un administrador puede compartir el panel.');
-   if(req.method==='GET')return Response.json({users:await rows(db,'SELECT u.id,u.name,u.email,m.role FROM User u JOIN AccountAccess a ON a.userId=u.id AND a.enabled=1 JOIN WorkspaceMember m ON m.userId=u.id WHERE m.workspaceId=?','90132980889'),grants:await rows(db,"SELECT userId,level FROM ResourceGrant WHERE resourceType='DASHBOARD' AND resourceId=?",id)});
+   if(req.method==='GET')return Response.json({users:await rows(db,'SELECT u.id,u.name,u.email,m.role FROM User u JOIN AccountAccess a ON a.userId=u.id AND a.enabled=1 JOIN WorkspaceMember m ON m.userId=u.id WHERE m.workspaceId=?',a.workspaceId),grants:await rows(db,"SELECT userId,level FROM ResourceGrant WHERE resourceType='DASHBOARD' AND resourceId=?",id)});
    if(req.method==='POST'){
     const p=z.object({userId:z.string(),level:z.enum(['NONE','VIEW','EDIT'])}).parse(body);
     const target=await db.prepare('SELECT u.id FROM User u JOIN AccountAccess a ON a.userId=u.id WHERE u.id=? AND a.enabled=1').bind(p.userId).first();if(!target)throw new AccessError(400,'El usuario debe tener una cuenta habilitada.');
     const creator=await db.prepare('SELECT createdBy FROM Dashboard WHERE id=?').bind(id).first<{createdBy:string}>();if(p.userId===creator?.createdBy)throw new AccessError(400,'No se puede quitar el acceso del creador.');
-    await db.batch([db.prepare("INSERT INTO ResourceGrant (userId,resourceType,resourceId,level) VALUES (?,'DASHBOARD',?,?) ON CONFLICT(userId,resourceType,resourceId) DO UPDATE SET level=excluded.level").bind(p.userId,id,p.level),db.prepare('INSERT INTO AccessAudit (id,actorId,action,targetId,createdAt) VALUES (?,?,?,?,?)').bind(randomUUID(),a.user.id,'dashboard.share',id+':'+p.userId,Date.now())]);return Response.json({ok:true});
+    const [grant]=await db.batch([
+     db.prepare("INSERT INTO ResourceGrant (userId,resourceType,resourceId,level) SELECT ?,'DASHBOARD',id,? FROM Dashboard WHERE id=? ON CONFLICT(userId,resourceType,resourceId) DO UPDATE SET level=excluded.level").bind(p.userId,p.level,id),
+     db.prepare("INSERT INTO AccessAudit (id,actorId,action,targetId,createdAt) SELECT ?,?,'dashboard.share',?,? FROM Dashboard WHERE id=?").bind(randomUUID(),a.user.id,id+':'+p.userId,Date.now(),id),
+    ]);
+    if(!grant.meta.changes)throw new AccessError(404,'No existe el dashboard.');
+    return Response.json({ok:true});
    }
   }
   if(req.method==='PUT'&&!action){

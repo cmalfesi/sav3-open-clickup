@@ -4,7 +4,7 @@ import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Mention from "@tiptap/extension-mention";
-import { useEffect, useRef, useId } from "react";
+import { useCallback, useEffect, useRef, useId, useMemo } from "react";
 import {
   Bold,
   Italic,
@@ -17,7 +17,16 @@ import {
 } from "lucide-react";
 import { markDraft } from "@/lib/drafts";
 import { cn } from "@/lib/utils";
+import { isRichTextLink, linkifyRichText } from "@/lib/rich-text-links";
 import { createMentionSuggestion, type MentionItem } from "@/lib/mention-suggestion";
+
+function openEditorLink(event: MouseEvent | KeyboardEvent) {
+  const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
+  if (!link || !isRichTextLink(link.href)) return false;
+  event.preventDefault();
+  window.open(link.href, "_blank", "noopener,noreferrer");
+  return true;
+}
 
 export function RichEditor({
   content,
@@ -48,9 +57,19 @@ export function RichEditor({
     mentionsRef.current = mentions ?? [];
   }, [mentions]);
 
+  const preparedContent = useMemo(() => typeof document === "undefined" ? content : linkifyRichText(content), [content]);
+
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+        link: {
+          defaultProtocol: "https",
+          openOnClick: false,
+          HTMLAttributes: { tabindex: "0" },
+          isAllowedUri: (url, { defaultValidate }) => defaultValidate(url) && isRichTextLink(url),
+        },
+      }),
       Placeholder.configure({ placeholder: placeholder ?? "Write something…" }),
       ...(mentions
         ? [
@@ -61,24 +80,40 @@ export function RichEditor({
           ]
         : []),
     ],
-    content,
+    content: preparedContent,
     immediatelyRender: false,
     autofocus: autoFocus,
     editorProps: {
       attributes: { class: cn("rich min-h-[60px] px-3 py-2 outline-none", className) },
+      handleDOMEvents: {
+        click: (_view, event) => openEditorLink(event),
+        keydown: (_view, event) => event.key === "Enter" && openEditorLink(event),
+      },
     },
     onUpdate: ({ editor }) => { dirty.current=normalize(editor.getHTML())!==normalize(baseline.current);markDraft(draftId,dirty.current);onChange?.(editor.getHTML()); },
-    onBlur: ({ editor }) => {if(dirty.current&&onBlur){const html=editor.getHTML();void Promise.resolve(onBlur(html)).then(()=>{if(editor.getHTML()===html){baseline.current=html;dirty.current=false;markDraft(draftId,false);}}).catch(()=>{/* Keep the draft when saving fails. */});}},
+    onBlur: ({ editor }) => {
+      if (!dirty.current || !onBlur) return;
+      const draft = editor.getHTML();
+      const html = linkifyRichText(draft);
+      void Promise.resolve(onBlur(html)).then(() => {
+        if (editor.getHTML() !== draft) return;
+        if (html !== draft && !editor.isFocused) editor.commands.setContent(html, { emitUpdate: false });
+        baseline.current = editor.getHTML();
+        dirty.current = false;
+        markDraft(draftId, false);
+      }).catch(() => { /* Keep the draft when saving fails. */ });
+    },
   });
 
   // keep external content in sync when switching tasks
   useEffect(() => {
-    if (editor && !dirty.current && content !== editor.getHTML()) {
-      baseline.current=content;
-      editor.commands.setContent(content, { emitUpdate: false });
+    if (editor && !dirty.current) {
+      if (preparedContent !== editor.getHTML()) {
+        editor.commands.setContent(preparedContent, { emitUpdate: false });
+      }
+      baseline.current = editor.getHTML();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [content]);
+  }, [editor, preparedContent]);
 
   if (!editor) return <div className="min-h-[60px] px-3 py-2 text-[13px] text-cu-text-tertiary">…</div>;
 
@@ -129,5 +164,8 @@ function Toolbar({ editor }: { editor: Editor }) {
 
 /** Static renderer for stored HTML. */
 export function RichText({ html, className }: { html: string; className?: string }) {
-  return <div className={cn("rich", className)} dangerouslySetInnerHTML={{ __html: html }} />;
+  const renderContent = useCallback((element: HTMLDivElement | null) => {
+    if (element) element.innerHTML = linkifyRichText(html);
+  }, [html]);
+  return <div ref={renderContent} className={cn("rich", className)} />;
 }
