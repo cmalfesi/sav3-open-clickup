@@ -2,6 +2,7 @@ import { actor } from "./access-context";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma, getD1 } from "@/lib/db";
 import { readListTasks } from "./list-task-reader";
+import { canManageListView } from "./list-view-service";
 
 // ----------------------------------------------------------------------------
 // Reusable include shapes (single source of truth for API <-> client types)
@@ -113,8 +114,12 @@ export async function getListData(listId: string) {
     return !t.parentId || !a.access.can("TASK",t.parentId);
   }).map(visibleTask);
   list.views=list.views.filter(v=>v.type!=='DASHBOARD'||a.access.can('DASHBOARD',String((v.config as {dashboardId?:string}|null)?.dashboardId??'')));
+  const taskViewCount = list.views.filter(v => v.type !== "DASHBOARD").length;
+  const deletableViewIds = list.views.filter(v =>
+    taskViewCount > (v.type === "DASHBOARD" ? 0 : 1) && canManageListView(a, v)
+  ).map(v => v.id);
   const dependencies = loaded.dependencies;
-  return { list, tasks, dependencies:dependencies.filter(d=>a.access.can("TASK",d.blockerId)&&a.access.can("TASK",d.blockedId)) };
+  return { list, tasks, deletableViewIds, dependencies:dependencies.filter(d=>a.access.can("TASK",d.blockerId)&&a.access.can("TASK",d.blockedId)) };
 }
 
 export type ListData = NonNullable<Awaited<ReturnType<typeof getListData>>>;

@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { DashboardBuilder } from "@/components/dashboard/builder";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useSiteRouter as useRouter } from "@/lib/site-navigation";
 import {
@@ -22,6 +22,8 @@ import {
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TemplatePicker } from "@/components/views/template-picker";
+import { DeleteViewMenu } from "@/components/views/delete-view-menu";
+import type { ListData } from "@/lib/queries";
 import { useList, useCreateTask, useToggleFavorite } from "@/lib/hooks";
 import { useWorkspace } from "@/components/workspace-context";
 import { hasDrafts } from "@/lib/drafts";
@@ -55,7 +57,9 @@ function ListPageContent({ listId }: { listId: string }) {
   const [viewBusy,setViewBusy]=useState(false),[viewError,setViewError]=useState('');
   const { data, isLoading, error } = useList(listId);
   const create = useCreateTask(listId);
-  const { favorites } = useWorkspace();
+  const { currentUser, favorites } = useWorkspace();
+  const activeTab = useRef<HTMLButtonElement>(null);
+  const focusAfterDeletion = useRef(false);
   const toggleFav = useToggleFavorite();
   const isFav = favorites.includes(listId);
   const router = useRouter();
@@ -87,6 +91,41 @@ function ListPageContent({ listId }: { listId: string }) {
     setActiveViewId(view.id);
     window.history.replaceState(null,"",pathname+"?view="+encodeURIComponent(view.id));
     personal.update({views:{},activeViewId:view.id});
+  }
+
+  useEffect(() => {
+    if (!focusAfterDeletion.current || personal.loading || !activeTab.current) return;
+    activeTab.current.focus();
+    focusAfterDeletion.current = false;
+  }, [activeView?.id, personal.loading]);
+
+  async function removeView(viewId: string) {
+    if (activeView?.type === "DASHBOARD" && hasDrafts()) {
+      throw new Error("Guardá o descartá los cambios del dashboard antes de eliminar la vista.");
+    }
+    await apiSend(`/api/views/${encodeURIComponent(viewId)}`, "DELETE");
+    const key = ["list", listId];
+    const current = qc.getQueryData<ListData>(key);
+    const remaining = (current?.list.views ?? views).filter(view => view.id !== viewId);
+    const next = remaining.find(view => view.type !== "DASHBOARD");
+    focusAfterDeletion.current = true;
+    setViewError("");
+    qc.setQueryData<ListData>(key, previous => previous && {
+      ...previous,
+      list: { ...previous.list, views: previous.list.views.filter(view => view.id !== viewId) },
+      deletableViewIds: (previous.deletableViewIds ?? []).filter(id => id !== viewId),
+    });
+    setActiveViewId(next?.id ?? null);
+    const url = new URL(window.location.href);
+    if (next) {
+      url.searchParams.set("view", next.id);
+      personal.update({ views: {}, activeViewId: next.id });
+    } else {
+      url.searchParams.delete("view");
+    }
+    window.history.replaceState(null, "", url);
+    void qc.invalidateQueries({ queryKey: key });
+    void qc.invalidateQueries({ queryKey: ["personal-views", currentUser.id, listId] });
   }
 
   function updateVs(next:ViewState){if(activeView)personal.update({views:{[activeView.id]:{viewState:next}}});}
@@ -196,6 +235,8 @@ function ListPageContent({ listId }: { listId: string }) {
           {list.views.map((v) => (
             <button
               key={v.id}
+              ref={activeView?.id === v.id ? activeTab : undefined}
+              aria-current={activeView?.id === v.id ? "page" : undefined}
               onClick={() => selectView(v)}
               className={cn(
                 "flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] transition-colors",
@@ -212,6 +253,10 @@ function ListPageContent({ listId }: { listId: string }) {
         </div>
 
         <div className="flex items-center gap-1 text-cu-text-secondary">
+          {activeView && data.deletableViewIds?.includes(activeView.id) && (
+            <DeleteViewMenu key={activeView.id} name={activeView.name}
+              dashboard={activeView.type === "DASHBOARD"} onDelete={() => removeView(activeView.id)} />
+          )}
           <span role="status" className="mr-2 text-[11px] text-cu-text-tertiary">Vista personal · {personal.saving?"Guardando…":personal.saveError?"Guardado pendiente":"Guardado automático"}</span>
           <ToolbarButton icon={<Users className="h-4 w-4" />} label="Assignee" />
           <GroupMenu state={vs} onChange={updateVs} />

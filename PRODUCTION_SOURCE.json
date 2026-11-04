@@ -1,7 +1,7 @@
 {
-  "production_version": 16,
+  "production_version": 17,
   "base_upstream_commit": "fd92240fbcec674afed5096b61f9414d16d1b653",
-  "runtime_code": "Public feature code from version 16 with generic workspace selection. Deployment-only data and configuration are excluded.",
+  "runtime_code": "Public feature code for version 17. Deployment-only data and configuration are excluded.",
   "excluded": [
     "lib/restore-plan.json",
     "lib/restored-documents.json",
@@ -275,7 +275,7 @@
     },
     {
       "path": "app/api/views/[viewId]/route.ts",
-      "sha256": "bd52b82b0f80e15d65a42586e2245c7efa8447188d42dbf59c2d21347c512897"
+      "sha256": "8ecb250aa844bb91bd67585bd5835fb4cec60b5394de32413d558aca7eb4a5c0"
     },
     {
       "path": "app/chatgpt-auth.ts",
@@ -726,6 +726,10 @@
       "sha256": "16ca5051976dd349fde0ddcff573e09c29f97b2664ae8a87d6ffff9cc1d3d08a"
     },
     {
+      "path": "components/views/delete-view-menu.tsx",
+      "sha256": "c90efac89ba469d1f1b7ebda5c2f8f022ed630a86efaf1ad796892885a6a0cb9"
+    },
+    {
       "path": "components/views/filter-sort.tsx",
       "sha256": "6bbcade4ab7bcd673ecf3a55e90fc4736837d54a0d6b0faaa87efc8ad6d7aebf"
     },
@@ -735,7 +739,7 @@
     },
     {
       "path": "components/views/list-page.tsx",
-      "sha256": "0875ec7121bee8017aec9c3ff2f5c1d75a0d51d31c008b527068af09027313d5"
+      "sha256": "8d08f76716a466ef4806de965c9a22802e7358cc5ba24a5b66a08eb892a60a2c"
     },
     {
       "path": "components/views/list-view.tsx",
@@ -876,6 +880,10 @@
     {
       "path": "docs/releases/16.md",
       "sha256": "02aec602ed71f2f04cc5157c8d1009594d310ac27542ee214fc5dd1b5b4cb534"
+    },
+    {
+      "path": "docs/releases/17.md",
+      "sha256": "b273ee774125a232a7b30dc3ceadf9e29d33465c3eb9698c9cd05e58638e15d1"
     },
     {
       "path": "docs/releases/8.md",
@@ -1054,6 +1062,10 @@
       "sha256": "cc5f15ae6074baedb45cce6b2168487218fe4ea41ec63f8c63410bc6a012dfe2"
     },
     {
+      "path": "lib/list-view-service.ts",
+      "sha256": "b9e4acc2600b3a743383f3d2f4e0d334b3fa5f6fbb33bfc44820a259e20e889f"
+    },
+    {
       "path": "lib/mention-suggestion.ts",
       "sha256": "ac524e524c341574775a4da6b44a9a07ebf4118e7eb31a7bc30ec1134d97bc34"
     },
@@ -1079,7 +1091,7 @@
     },
     {
       "path": "lib/queries.ts",
-      "sha256": "44dc080fcb2c21dc036300c9d8b9817ede5f1d2ecfd849f0cf9ae8510e208182"
+      "sha256": "4d0f2cdd78ac590f07286bba60966c1df5b5f93f5bff8e71418ef8635a523dd7"
     },
     {
       "path": "lib/rate-limit.ts",
@@ -1338,6 +1350,10 @@
       "sha256": "6c76f0ec23dc41170e83ec34ed13bb76ba4f25be4239948236e9921983037c2b"
     },
     {
+      "path": "tests/list-views.d1.test.ts",
+      "sha256": "692495e02ff6bbeb5b61bfa47fb813551b3af3191f43f7245c823a53720afe08"
+    },
+    {
       "path": "tests/lists.d1.test.ts",
       "sha256": "b6565ccd5e125f7687750f2e7d1d35edc8c72e2140303b274f5d9cb757d5eed6"
     },
@@ -1371,7 +1387,7 @@
     },
     {
       "path": "tests/task-cache.test.ts",
-      "sha256": "ad5c83dc5a59a8700268759b09c31f5193dd7dccb9d752b366209e5ef0acda0c"
+      "sha256": "5a32da33a26d28e5f4ae591813c65f6b876286bd6b5c8a0ab05a5f63e54e2c3b"
     },
     {
       "path": "tests/tasks.integration.test.ts",
@@ -1427,10 +1443,10 @@
     }
   ],
   "validation": {
-    "production_tests": 116,
+    "production_tests": 119,
     "typescript": "passed",
     "production_build": "passed",
     "changed_file_lint": "zero errors",
-    "browser": "Synthetic QA covered pasted and typed URLs, click/keyboard opening, delete confirmation, cancel and retry."
+    "browser": "Synthetic confirmation menu QA: keyboard, cancel, retry and fallback selection."
   }
 }
