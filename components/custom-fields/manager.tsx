@@ -49,7 +49,11 @@ export function CustomFieldManagerHost() {
     <FieldManager
       key={currentUser.id}
       request={request}
-      onClose={() => setRequest(null)}
+      onClose={() => {
+        const target = returnFocus.current;
+        setRequest(null);
+        requestAnimationFrame(() => target?.focus());
+      }}
       onReturnFocus={() => returnFocus.current?.focus()}
     />
   );
@@ -166,7 +170,8 @@ function FieldManager({
               </Dialog.Description>
             </div>
             <Dialog.Close
-              disabled={busy || !!editor}
+              disabled={busy}
+              onClick={onClose}
               aria-label="Cerrar administrador de campos"
               className={button}
             >
