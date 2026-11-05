@@ -40,7 +40,7 @@ import { AssigneeControl } from "@/components/menus/assignee-control";
 import { DateControl } from "@/components/menus/date-control";
 import { TagChip } from "@/components/ui/primitives";
 import { CustomFieldControl } from "@/components/views/custom-field-control";
-import { AddFieldDialog } from "@/components/views/add-field-dialog";
+import { openFieldManager } from "@/components/custom-fields/manager";
 import { BulkBar } from "@/components/views/bulk-bar";
 
 /** Cap rendered rows per group; "Show more" reveals the next page. Keeps the DOM bounded for large lists. */
@@ -66,7 +66,7 @@ export function ListView({
   const members = useMemo(() => workspace.members.map((m) => m.user), [workspace.members]);
   const update = useUpdateTask(list.id);
   const bulk = useBulk(list.id);
-  const [addingField, setAddingField] = useState(false);
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const toggleSelect = (id: string) =>
@@ -162,7 +162,7 @@ export function ListView({
 
   const body = (
     <>
-      <ColumnHeader customFields={customFields} gridStyle={gridStyle} onAddField={() => setAddingField(true)} />
+      <ColumnHeader customFields={customFields} gridStyle={gridStyle} onAddField={() => openFieldManager({ location: { type: "LIST", id: list.id } })} />
       {groups.map((group) => (
         <Group
           key={group.id}
@@ -194,7 +194,7 @@ export function ListView({
           body
         )}
       </div>
-      {addingField && <AddFieldDialog listId={list.id} onClose={() => setAddingField(false)} />}
+
       {selected.size > 0 && (
         <BulkBar
           count={selected.size}
@@ -219,6 +219,7 @@ function ColumnHeader({
   gridStyle: React.CSSProperties;
   onAddField: () => void;
 }) {
+  const { authorization } = useWorkspace();
   return (
     <div
       className="sticky top-0 z-10 grid items-center border-b border-cu-border bg-cu-bg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-cu-text-tertiary"
@@ -229,10 +230,11 @@ function ColumnHeader({
       <div>Due date</div>
       <div>Priority</div>
       {customFields.map((f) => (
-        <div key={f.id} className="truncate">{f.name}</div>
+        <button key={f.id} type="button" disabled={authorization.role === "GUEST"} onClick={() => openFieldManager({ fieldId: f.id })} className="truncate text-left hover:text-cu-purple" title={"Configurar " + f.name}>{f.name}</button>
       ))}
       <div className="flex justify-center">
         <button
+          disabled={authorization.role === "GUEST"}
           onClick={onAddField}
           title="Add column"
           className="rounded p-1 text-cu-text-tertiary hover:bg-cu-hover hover:text-cu-text"

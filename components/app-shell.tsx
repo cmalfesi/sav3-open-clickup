@@ -9,6 +9,7 @@ import { WorkspaceProvider } from "@/components/workspace-context";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { CommandPalette } from "@/components/command-palette";
 import { ChangesNotice } from "@/components/changes-notice";
+import { CustomFieldManagerHost } from "@/components/custom-fields/manager";
 import { ShortcutsHelp } from "@/components/shortcuts-help";
 import { version } from "@/package.json";
 
@@ -120,6 +121,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
         <ChangesNotice />
+        <CustomFieldManagerHost />
         <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
       </div>
     </WorkspaceProvider>

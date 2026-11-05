@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import { effectiveFieldIds } from "@/lib/custom-field-service";
+import { prisma, getD1 } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 import { ApiError, readJson, route } from "@/lib/api-helpers";
 import { publish } from "@/lib/events";
@@ -32,10 +33,11 @@ export const POST = route(async (req, { params }: Ctx) => {
   });
 
   const oldListId = task.listId;
+  const retainedFields = await effectiveFieldIds(getD1(), targetListId);
   await prisma.$transaction([
-    // custom field values are list-specific — drop them for the task and its subtasks
-    prisma.customFieldValue.deleteMany({ where: { taskId } }),
-    prisma.customFieldValue.deleteMany({ where: { task: { parentId: taskId } } }),
+    // Keep shared and inherited values that are also available in the target List.
+    prisma.customFieldValue.deleteMany({ where: { taskId, customFieldId: { notIn: retainedFields } } }),
+    prisma.customFieldValue.deleteMany({ where: { task: { parentId: taskId }, customFieldId: { notIn: retainedFields } } }),
     prisma.task.update({
       where: { id: taskId },
       data: { listId: targetListId, statusId: firstStatus.id, position: (last?.position ?? 0) + 1000 },

@@ -68,6 +68,17 @@ afterAll(async () => {
 const nodes=[{id:"test-space",type:"SPACE" as const},{id:"test-list",type:"LIST" as const,parentId:"test-space",parentType:"SPACE" as const},...Array.from({length:130},(_,i)=>({id:`task-${i}`,type:"TASK" as const,listId:"test-list",parentId:"test-list",parentType:"LIST" as const})),{id:"private-sub",type:"TASK" as const,listId:"test-list",parentId:"task-0",parentType:"TASK" as const}];
 function member(grants:Grant[]):Actor {return {user:{id:"test",name:"Test",email:"test@example.com",color:"#000000",avatarUrl:null},role:"MEMBER",workspaceId:"test-workspace",kind:"local",access:new Access("MEMBER",false,nodes,grants)};}
 describe("large lists on D1", () => {
+  it("loads inherited fields through normal List and task detail queries", async () => {
+    const a = { ...member([]), role: "OWNER" as const, access: new Access("OWNER", true, nodes, []) };
+    const p = holder.client!;
+    await p.customField.create({ data: { id: "space-field", name: "Shared", type: "TEXT" } });
+    await holder.db!.prepare("INSERT INTO CustomFieldLocation(customFieldId,spaceId) VALUES ('space-field','test-space')").run();
+    await withActor(a, async () => {
+      expect((await getListData("test-list"))!.list.customFields.some(f => f.id === "space-field")).toBe(true);
+      expect((await getTaskDetail("task-0"))!.list.customFields.some(f => f.id === "space-field")).toBe(true);
+    });
+    await p.customField.delete({ where: { id: "space-field" } });
+  });
   it("preserves relations on create/update and returns archived tasks after a successful write",async()=>{
     const a={...member([]),role:"OWNER" as const,access:new Access("OWNER",true,nodes,[])};
     await withActor(a,async()=>{

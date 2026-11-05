@@ -1,4 +1,5 @@
 import { AccessError, type Actor, type ResourceType, type Level } from './access-context';
+import { fieldApplies } from './custom-field-service';
 const denied = () => { throw new AccessError(403, 'No tenés permiso para esta operación.'); };
 export async function authorizeResourceRequest(req: Request, db: D1Database, a: Actor) {
     const path = new URL(req.url).pathname;
@@ -210,8 +211,8 @@ export async function authorizeResourceRequest(req: Request, db: D1Database, a: 
             assert('SPACE', folder.spaceId, 'EDIT');
         }
         if (kind === 'tasks' && id && action === 'fields' && parts[4]) {
-            const field = await row('SELECT listId FROM CustomField WHERE id=?', parts[4]);
-            if (!field || field.listId !== access.resources('TASK').find(t => t.id === id)?.listId)
+            const taskListId = access.resources('TASK').find(t => t.id === id)?.listId;
+            if (!taskListId || !await fieldApplies(db, parts[4], taskListId))
                 throw new AccessError(400, 'Campo de otra lista.');
         }
     }

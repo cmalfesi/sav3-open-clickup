@@ -5,6 +5,7 @@ import { workspaceLogoVersion } from "@/lib/workspace-branding";
 import { useState } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { useSiteRouter as useRouter } from "@/lib/site-navigation";
+import { openFieldManager } from "@/components/custom-fields/manager";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   ChevronRight,
@@ -227,6 +228,7 @@ function UserSwitcher() {
 }
 
 function SpaceItem({ space }: { space: SpaceNode }) {
+  const { authorization } = useWorkspace();
   const router = useRouter();
   const { createList, createFolder, rename, remove } = useHierarchy();
   const [open, setOpen] = useState(true);
@@ -269,6 +271,7 @@ function SpaceItem({ space }: { space: SpaceNode }) {
         bold
         onRename={() => setRenaming(true)}
         onDelete={() => remove.mutate({ kind: "spaces", id: space.id })}
+        onFields={authorization.role === "GUEST" ? undefined : () => openFieldManager({ location: { type: "SPACE", id: space.id } })}
         addMenu={
           <>
             <MenuItem icon={<ListIcon className="h-4 w-4" />} label="New List" onSelect={() => { setOpen(true); setCreating("list"); }} />
@@ -435,6 +438,7 @@ function Row({
   bold,
   onRename,
   onDelete,
+  onFields,
   onAdd,
   addMenu,
 }: {
@@ -447,6 +451,7 @@ function Row({
   bold?: boolean;
   onRename?: () => void;
   onDelete?: () => void;
+  onFields?: () => void;
   onAdd?: () => void;
   addMenu?: React.ReactNode;
 }) {
@@ -462,7 +467,7 @@ function Row({
         {leading}
         <span className={cn("truncate", bold && "font-semibold")}>{label}</span>
       </button>
-      {(onRename || onDelete) && <RowMenu onRename={onRename} onDelete={onDelete} />}
+      {(onRename || onDelete) && <RowMenu onRename={onRename} onDelete={onDelete} onFields={onFields} />}
       {addMenu ? (
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
@@ -485,7 +490,7 @@ function Row({
   );
 }
 
-function RowMenu({ onRename, onDelete }: { onRename?: () => void; onDelete?: () => void }) {
+function RowMenu({ onRename, onDelete, onFields }: { onRename?: () => void; onDelete?: () => void; onFields?: () => void }) {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
@@ -499,6 +504,7 @@ function RowMenu({ onRename, onDelete }: { onRename?: () => void; onDelete?: () 
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content side="bottom" sideOffset={4} collisionPadding={8} align="end" className="z-50 min-w-[150px] rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg">
+          {onFields && <MenuItem icon={<Plus className="h-4 w-4" />} label="Campos personalizados" onSelect={onFields} />}
           {onRename && <MenuItem icon={<Pencil className="h-4 w-4" />} label="Rename" onSelect={onRename} />}
           {onDelete && <MenuItem icon={<Trash2 className="h-4 w-4" />} label="Delete" onSelect={onDelete} danger />}
         </DropdownMenu.Content>

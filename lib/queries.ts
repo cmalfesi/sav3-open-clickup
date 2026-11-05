@@ -3,6 +3,7 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma, getD1 } from "@/lib/db";
 import { readListTasks } from "./list-task-reader";
 import { canManageListView } from "./list-view-service";
+import { effectiveFieldIds } from "./custom-field-service";
 
 // ----------------------------------------------------------------------------
 // Reusable include shapes (single source of truth for API <-> client types)
@@ -108,6 +109,10 @@ export async function getListData(listId: string) {
     },
   }), readListTasks(getD1(),listId)]);
   if (!list) return null;
+  list.customFields = await prisma.customField.findMany({
+    where: { id: { in: await effectiveFieldIds(getD1(), listId) } },
+    orderBy: { position: "asc" }, include: { options: { orderBy: { position: "asc" } } },
+  });
 
   const tasks = loaded.tasks.filter(t => {
     if (!a.access.can("TASK",t.id)) return false;
@@ -189,6 +194,10 @@ export async function getTaskDetail(taskId: string) {
     },
   });
   if (!task) return null;
+  task.list.customFields = await prisma.customField.findMany({
+    where: { id: { in: await effectiveFieldIds(getD1(), task.listId) } },
+    orderBy: { position: "asc" }, include: { options: { orderBy: { position: "asc" } } },
+  });
   task.subtasks=task.subtasks.filter(t=>a.access.can("TASK",t.id));
   task._count.subtasks=task.subtasks.length;
   task.blockedBy=task.blockedBy.filter(d=>a.access.can("TASK",d.blockerId));

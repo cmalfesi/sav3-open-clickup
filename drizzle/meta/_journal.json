@@ -36,6 +36,13 @@
       "when": 1793714233771,
       "tag": "0004_useful_dagger",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1793903099544,
+      "tag": "0005_careful_dark_beast",
+      "breakpoints": true
     }
   ]
 }

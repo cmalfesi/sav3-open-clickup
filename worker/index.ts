@@ -11,6 +11,7 @@ import { publicAccess, privateResponse } from "../lib/public-access";
 import { loadActor, teamRoute, isPublicAuth } from "../lib/team-service";
 import { withActor, AccessError } from "../lib/access-context";
 import { authorizeResourceRequest } from "../lib/request-access";
+import { customFieldRoute } from "../lib/custom-field-service";
 
 const worker = {
   async fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext<{ CONNECTORS?: ConnectorBinding }>) {
@@ -25,6 +26,8 @@ const worker = {
     const loaded = await loadActor(env.DB, request);
     const isMcp=url.pathname==='/mcp'||url.pathname==='/api/integrations/mcp';
     const actor=loaded?{...loaded,channel:(isMcp?'mcp':loaded.kind==='token'?'api':'web') as 'mcp'|'api'|'web'}:null;
+    const customFields = await customFieldRoute(request,env.DB,actor);
+    if(customFields)return privateResponse(customFields);
     const branding=await workspaceBrandingRoute(request,env.DB,env.BUCKET,actor);
     if(branding)return privateResponse(branding);
     const integration=await integrationRoute(request,env.DB,actor);

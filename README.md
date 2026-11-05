@@ -1,6 +1,6 @@
-# SAV3 · Open ClickUp — código de producción v16
+# SAV3 · Open ClickUp — código de producción v20
 
-Esta copia exporta el código compartible de la versión 16 publicada en Sites,
+Esta copia exporta el código compartible de la versión 20 publicada en Sites,
 sobre el upstream
 `goshops-com/open-clickup` (`fd92240fbcec674afed5096b61f9414d16d1b653`).
 
@@ -60,6 +60,19 @@ Esta entrega sincroniza código, sin volver a desplegar ni cambiar producción.
 Un despliegue posterior requiere configurar el Site de destino y sus bindings.
 No subas credenciales a Git. La publicación no importa automáticamente datos,
 usuarios activos, contraseñas ni sesiones desde otra instancia.
+
+## Custom Field Manager
+
+Open **Campos personalizados** from a List toolbar, a Space menu, a custom field
+column header, a dropdown selector or a dashboard toolbar. Create a field or add
+an existing one to a Space or List. Space fields are inherited by current and
+future Lists. Dashboards use fields from their source Lists.
+
+The editor supports the existing field types, names, descriptions, option labels,
+colors and order, and shared locations. Editing a shared definition updates all
+its locations. Administrators can manage Space fields. Members need edit access
+to every explicit List location. Used options must be cleared from tasks before
+removal, and simultaneous definition edits are checked using revisions.
 
 ## Upstream documentation
 

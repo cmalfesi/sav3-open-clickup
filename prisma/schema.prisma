@@ -332,13 +332,13 @@ enum CustomFieldType {
 
 model CustomField {
   id       String          @id @default(cuid())
-  listId   String
+  listId   String?
   name     String
   type     CustomFieldType
   config   Json? // type-specific config (e.g. number format, rating max)
   position Float           @default(0)
 
-  list    List                @relation(fields: [listId], references: [id], onDelete: Cascade)
+  list    List?               @relation(fields: [listId], references: [id], onDelete: SetNull)
   options CustomFieldOption[]
   values  CustomFieldValue[]
 
