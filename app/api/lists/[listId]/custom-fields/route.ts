@@ -1,49 +1,19 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { prisma } from "@/lib/db";
-import { CustomFieldType } from "@/lib/generated/prisma/client";
-import { requireRole } from "@/lib/permissions";
-import { readJson, route } from "@/lib/api-helpers";
+import { z } from 'zod';
+import { actor } from '@/lib/access-context';
+import { prisma, getD1 } from '@/lib/db';
+import { requireRole } from '@/lib/permissions';
+import { ApiError, readJson, route } from '@/lib/api-helpers';
+import { fieldSchema } from '@/lib/custom-field-model';
+import { saveCustomField } from '@/lib/custom-field-service';
 
 type Ctx = { params: Promise<{ listId: string }> };
-const OPTION_COLORS = ["#3d8df5", "#2ecd6f", "#ff7800", "#fd71af", "#9b59b6", "#f50000"];
-
-const schema = z.object({
-  name: z.string().trim().min(1, "name is required"),
-  type: z.enum([
-    "TEXT", "TEXTAREA", "NUMBER", "MONEY", "DROPDOWN", "LABELS",
-    "DATE", "CHECKBOX", "URL", "EMAIL", "PHONE", "RATING", "PROGRESS",
-  ]),
-  options: z.array(z.string()).optional(),
-});
-
+const colors = ['#3d8df5', '#2ecd6f', '#ff7800', '#fd71af', '#9b59b6', '#f50000'];
 export const POST = route(async (req, { params }: Ctx) => {
   const { listId } = await params;
-  await requireRole("MEMBER");
-  const { name, type, options } = await readJson(req, schema);
-  const last = await prisma.customField.findFirst({ where: { listId }, orderBy: { position: "desc" } });
-  const needsOptions = type === "DROPDOWN" || type === "LABELS";
-
-  const field = await prisma.customField.create({
-    data: {
-      listId,
-      name,
-      type: type as CustomFieldType,
-      position: (last?.position ?? 0) + 1,
-      options:
-        needsOptions && options?.length
-          ? {
-              create: options
-                .filter((o) => o.trim())
-                .map((label, i) => ({
-                  label: label.trim(),
-                  color: OPTION_COLORS[i % OPTION_COLORS.length],
-                  position: i,
-                })),
-            }
-          : undefined,
-    },
-    include: { options: { orderBy: { position: "asc" } } },
-  });
-  return NextResponse.json(field, { status: 201 });
+  await requireRole('MEMBER');
+  const input = await readJson(req, z.object({ name: z.string(), type: z.string(), options: z.array(z.string()).max(500).optional() }));
+  const parsed = fieldSchema.safeParse({ ...input, locations: [{ type: 'LIST', id: listId }], options: (input.options ?? []).filter(o => o.trim()).map((label, i) => ({ label, color: colors[i % colors.length] })) });
+  if (!parsed.success) throw new ApiError(400, parsed.error.issues[0]?.message ?? "Campo inválido.");
+  const saved = await saveCustomField(getD1(), actor(), parsed.data);
+  return Response.json(await prisma.customField.findUnique({ where: { id: saved.id }, include: { options: { orderBy: { position: 'asc' } } } }), { status: 201 });
 });

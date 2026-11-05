@@ -1,3 +1,4 @@
+import { effectiveFieldIds } from './custom-field-service';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { AccessError,type Actor } from './access-context';
@@ -32,9 +33,10 @@ export async function dashboardDataset(db:D1Database,a:Actor,config:DashboardCon
  const tags=new Map<string,DashboardData['tags'][number]>();for(const r of rs[4].results as {taskId:string;tagId:string;name:string;color:string}[]){const t=index.get(r.taskId);if(t){t.tags.push(r.tagId);tags.set(r.tagId,{id:r.tagId,name:r.name,color:r.color});}}
  for(const r of rs[7].results as {taskId:string;customFieldId:string;value:unknown}[]){const t=index.get(r.taskId);if(t)t.fields[r.customFieldId]=decode(r.value);}
  const listIds=new Set((rs[1].results as {id:string}[]).filter(l=>a.access.visibleList(l.id)&&(!config.sources.length||config.sources.includes(l.id))).map(l=>l.id));
+ const availableFields = new Set(await effectiveFieldIds(db,[...listIds]));
  const options=rs[6].results as {id:string;customFieldId:string;name:string;color:string}[];
  const activities=(rs[8].results as {id:string;taskId:string;type:string;createdAt:string;data:string|null;userName:string|null}[]).filter(r=>index.has(r.taskId)&&(a.access.admin||['web','api','mcp'].includes(String((decode(r.data) as {source?:string}|null)?.source)))).map(r=>({id:r.id,taskId:r.taskId,taskName:index.get(r.taskId)!.name,listId:index.get(r.taskId)!.listId,userName:r.userName??'Sistema',type:r.type,createdAt:iso(r.createdAt)??''})).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id)).slice(0,200);
- return {tasks,lists:(rs[1].results as DashboardData['lists']).filter(l=>listIds.has(l.id)),statuses:(rs[2].results as DashboardData['statuses']).filter(s=>listIds.has(s.listId!)),members:[...members.values()],tags:[...tags.values()],fields:(rs[5].results as {id:string;listId:string;name:string;type:string}[]).filter(f=>listIds.has(f.listId)).map(f=>({...f,options:options.filter(o=>o.customFieldId===f.id)})),activities,refreshedAt:new Date().toISOString()};
+ return {tasks,lists:(rs[1].results as DashboardData['lists']).filter(l=>listIds.has(l.id)),statuses:(rs[2].results as DashboardData['statuses']).filter(s=>listIds.has(s.listId!)),members:[...members.values()],tags:[...tags.values()],fields:(rs[5].results as {id:string;listId:string;name:string;type:string}[]).filter(f=>availableFields.has(f.id)).map(f=>({...f,options:options.filter(o=>o.customFieldId===f.id)})),activities,refreshedAt:new Date().toISOString()};
 }
 async function validateSources(a:Actor,config:DashboardConfig){for(const id of config.sources)if(!a.access.visibleList(id))throw new AccessError(403,'Una fuente seleccionada no está disponible con tus permisos.');}
 export async function createDashboard(

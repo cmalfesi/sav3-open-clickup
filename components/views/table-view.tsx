@@ -13,6 +13,7 @@ import { StatusControl } from "@/components/menus/status-control";
 import { PriorityControl } from "@/components/menus/priority-control";
 import { AssigneeControl } from "@/components/menus/assignee-control";
 import { DueDate } from "@/components/ui/primitives";
+import { openFieldManager } from "@/components/custom-fields/manager";
 import { CustomFieldCell } from "@/components/views/custom-field-cell";
 import { BulkBar } from "@/components/views/bulk-bar";
 
@@ -32,7 +33,7 @@ export function TableView({
   const { list, tasks } = data;
   const statuses = list.statuses;
   const customFields = list.customFields;
-  const { workspace } = useWorkspace();
+  const { workspace, authorization } = useWorkspace();
   const members = useMemo(() => workspace.members.map((m) => m.user), [workspace.members]);
   const update = useUpdateTask(list.id);
   const bulk = useBulk(list.id);
@@ -69,7 +70,7 @@ export function TableView({
           <Cell>Due date</Cell>
           <Cell>Start date</Cell>
           {customFields.map((f) => (
-            <Cell key={f.id}>{f.name}</Cell>
+            <Cell key={f.id}><button type="button" disabled={authorization.role === "GUEST"} onClick={() => openFieldManager({ location: { type: "LIST", id: list.id }, fieldId: f.id })} className="truncate text-left hover:text-cu-purple" title={"Configurar " + f.name}>{f.name}</button></Cell>
           ))}
           <Cell className="justify-center">
             <Plus className="h-3.5 w-3.5" />

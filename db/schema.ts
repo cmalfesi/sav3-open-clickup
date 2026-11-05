@@ -150,12 +150,29 @@ export const TaskTagTable = sqliteTable("TaskTag", {
 
 export const CustomFieldTable = sqliteTable("CustomField", {
   id: text("id").primaryKey(),
-  listId: text("listId").notNull().references((): AnySQLiteColumn => ListTable.id, {onDelete: "cascade"}),
+  listId: text("listId").references((): AnySQLiteColumn => ListTable.id, {onDelete: "set null"}),
   name: text("name").notNull(),
   type: text("type").notNull(),
   config: text("config"),
   position: real("position").notNull().default(0)
 }, (t) => [index("CustomField_listId_index").on(t.listId)]);
+
+export const CustomFieldLocationTable = sqliteTable("CustomFieldLocation", {
+  customFieldId: text("customFieldId").notNull().references((): AnySQLiteColumn => CustomFieldTable.id, {onDelete: "cascade"}),
+  spaceId: text("spaceId").references((): AnySQLiteColumn => SpaceTable.id, {onDelete: "cascade"}),
+  listId: text("listId").references((): AnySQLiteColumn => ListTable.id, {onDelete: "cascade"}),
+}, (t) => [
+  uniqueIndex("CustomFieldLocation_space").on(t.customFieldId, t.spaceId),
+  uniqueIndex("CustomFieldLocation_list").on(t.customFieldId, t.listId),
+]);
+
+export const CustomFieldRevisionTable = sqliteTable("CustomFieldRevision", {
+  customFieldId: text("customFieldId").primaryKey().references((): AnySQLiteColumn => CustomFieldTable.id, {onDelete: "cascade"}),
+  revision: integer("revision").notNull().default(0),
+  writeKey: text("writeKey").notNull(),
+  createdBy: text("createdBy").references((): AnySQLiteColumn => UserTable.id, {onDelete: "set null"}),
+  createdAt: integer("createdAt"),
+});
 
 export const CustomFieldOptionTable = sqliteTable("CustomFieldOption", {
   id: text("id").primaryKey(),

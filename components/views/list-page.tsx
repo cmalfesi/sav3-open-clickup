@@ -32,6 +32,7 @@ import { apiSend } from "@/lib/api";
 import { ViewType } from "@/lib/enums";
 import { applyViewState, type ViewState } from "@/lib/view-state";
 import { FilterMenu, SortMenu, GroupMenu } from "@/components/views/filter-sort";
+import { openFieldManager } from "@/components/custom-fields/manager";
 import { ListView } from "@/components/views/list-view";
 import { BoardView } from "@/components/views/board-view";
 import { CalendarView } from "@/components/views/calendar-view";
@@ -58,7 +59,7 @@ function ListPageContent({ listId }: { listId: string }) {
   const [viewBusy,setViewBusy]=useState(false),[viewError,setViewError]=useState('');
   const { data, isLoading, error } = useList(listId);
   const create = useCreateTask(listId);
-  const { currentUser, favorites } = useWorkspace();
+  const { currentUser, favorites, authorization } = useWorkspace();
   const activeTab = useRef<HTMLButtonElement>(null);
   const focusAfterDeletion = useRef(false);
   const toggleFav = useToggleFavorite();
@@ -260,15 +261,16 @@ function ListPageContent({ listId }: { listId: string }) {
 
         <div className="flex min-w-0 flex-wrap items-center gap-1 text-cu-text-secondary">
           {activeView && data.deletableViewIds?.includes(activeView.id) && (
-            <DeleteViewMenu key={activeView.id} name={activeView.name}
+            <DeleteViewMenu key={"options:" + activeView.id} name={activeView.name}
               dashboard={activeView.type === "DASHBOARD"} onDelete={() => removeView(activeView.id)} />
           )}
           <span role="status" className="mr-2 text-[11px] text-cu-text-tertiary">Vista personal · {personal.saving?"Guardando…":personal.saveError?"Guardado pendiente":"Guardado automático"}</span>
+          {authorization.role !== 'GUEST' && <button type="button" onClick={() => openFieldManager({ location: { type: 'LIST', id: listId } })} className="rounded px-2 py-1.5 text-[13px] hover:bg-cu-hover">Campos personalizados</button>}
           <ToolbarButton icon={<Users className="h-4 w-4" />} label="Assignee" />
           <GroupMenu state={vs} onChange={updateVs} />
           <FilterMenu state={vs} onChange={updateVs} tasks={data.tasks} />
           <SortMenu state={vs} onChange={updateVs} />
-          {activeView && <ViewTaskSearch key={activeView.id} value={searchText}
+          {activeView && <ViewTaskSearch key={"search:" + activeView.id} value={searchText}
             onChange={text => setSearch({ viewId: activeView.id, text })} />}
           <button
             onClick={addTask}

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
+import { openFieldManager } from "@/components/custom-fields/manager";
+import { useWorkspace } from "@/components/workspace-context";
 import { Check, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CustomFieldWithOptions } from "@/lib/queries";
@@ -74,6 +76,7 @@ function OptionPicker({
   onChange: (v: unknown) => void;
   multi: boolean;
 }) {
+  const { authorization } = useWorkspace();
   const selected = new Set(multi ? ((value as string[]) ?? []) : value ? [value as string] : []);
   function toggle(id: string) {
     if (multi) {
@@ -111,6 +114,7 @@ function OptionPicker({
               {selected.has(o.id) && <Check className="h-3.5 w-3.5 text-cu-purple" />}
             </button>
           ))}
+          {authorization.role !== 'GUEST' && <button type="button" onClick={() => openFieldManager({ fieldId: field.id })} className="mt-1 w-full border-t border-cu-border px-2 py-2 text-left text-xs text-cu-purple hover:bg-cu-hover">Editar campo y opciones</button>}
           {!field.options.length && <div className="px-2 py-2 text-[12px] text-cu-text-tertiary">No options</div>}
         </Popover.Content>
       </Popover.Portal>
@@ -127,7 +131,7 @@ function TextEditor({
   value: unknown;
   onChange: (v: unknown) => void;
 }) {
-  const isNumber = field.type === CustomFieldType.NUMBER || field.type === CustomFieldType.MONEY;
+  const isNumber = field.type === CustomFieldType.NUMBER || field.type === CustomFieldType.MONEY || field.type === CustomFieldType.PROGRESS;
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
 
