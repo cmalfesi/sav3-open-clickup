@@ -48,7 +48,7 @@ export function TableView({
   const clearSelect = () => setSelected(new Set());
 
   const groups = useMemo(
-    () => groupTasks(tasks, groupBy, { statuses, members }),
+    () => groupTasks(tasks, groupBy, { statuses, members, fields: list.customFields }),
     [tasks, groupBy, statuses, members],
   );
 
@@ -99,6 +99,10 @@ export function TableView({
       {selected.size > 0 && (
         <BulkBar
           count={selected.size}
+          fields={list.customFields}
+          onField={(fieldId,value)=>bulk.mutate({ids:[...selected],customField:{fieldId,value}})}
+          onDueDate={dueDate=>bulk.mutate({ids:[...selected],patch:{dueDate}})}
+          onArchive={()=>{bulk.mutate({ids:[...selected],patch:{archived:true}});clearSelect();}}
           statuses={statuses}
           onSetStatus={(statusId) => bulk.mutate({ ids: [...selected], patch: { statusId } })}
           onSetPriority={(priority) => bulk.mutate({ ids: [...selected], patch: { priority } })}

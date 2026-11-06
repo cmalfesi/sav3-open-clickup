@@ -43,6 +43,41 @@
       "when": 1793903099544,
       "tag": "0005_careful_dark_beast",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793918620663,
+      "tag": "0006_lucky_corsair",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1793919367729,
+      "tag": "0007_glorious_rockslide",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793919681623,
+      "tag": "0008_shallow_vindicator",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1793920061676,
+      "tag": "0009_amused_exiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1793920694984,
+      "tag": "0010_concerned_goliath",
+      "breakpoints": true
     }
   ]
 }

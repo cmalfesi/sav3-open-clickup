@@ -87,7 +87,7 @@ beforeAll(async () => {
   const files = readdirSync("drizzle")
     .filter((f) => f.endsWith(".sql"))
     .sort();
-  for (const f of files.filter((f) => !f.startsWith("0005"))) await apply(f);
+  for (const f of files.filter((f) => f < "0005")) await apply(f);
   await db.batch([
     db.prepare("INSERT INTO Workspace(id,name) VALUES ('w','Workspace')"),
     db.prepare(
@@ -115,7 +115,7 @@ beforeAll(async () => {
       "INSERT INTO CustomFieldValue(id,taskId,customFieldId,value) VALUES ('v','t','legacy','\"legacy-option\"')",
     ),
   ]);
-  await apply(files.find((f) => f.startsWith("0005"))!);
+  for(const f of files.filter(f=>f >= "0005"))await apply(f);
 }, 30000);
 afterAll(async () => {
   await mf?.dispose();
@@ -162,7 +162,7 @@ describe("Custom Field Manager and compatibility", () => {
     const raw = await db
       .prepare("SELECT config FROM CustomField WHERE id='legacy'")
       .first<{ config: string }>();
-    expect(JSON.parse(raw!.config)).toEqual({
+    expect(JSON.parse(raw!.config)).toMatchObject({
       legacySetting: true,
       description: "Detalle",
     });

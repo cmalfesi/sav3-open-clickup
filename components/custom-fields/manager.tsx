@@ -1,6 +1,8 @@
 "use client";
 
 import { nanoid } from "nanoid";
+import {DefaultValueControl} from "./default-value-control";
+import {FieldTools} from "./field-tools";
 import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -452,6 +454,9 @@ function FieldEditor({
   const [name, setName] = useState(field?.name ?? "");
   const [type, setType] = useState<FieldInput["type"]>(field?.type ?? "TEXT");
   const [description, setDescription] = useState(field?.description ?? "");
+  const {authorization,workspace}=useWorkspace();
+  const [readerIds,setReaders]=useState(field?.readerIds??[]),[editorIds,setEditors]=useState(field?.editorIds??[]);
+  const [required,setRequired]=useState(field?.required??false),[adminOnly,setAdminOnly]=useState(field?.adminOnly??false),[defaultText,setDefaultText]=useState(field?.defaultValue===undefined?'':JSON.stringify(field.defaultValue)),[formula,setFormula]=useState(field?.formula??'');
   const [options, setOptions] = useState(
     (field?.options ?? []).map((o) => ({ ...o, key: o.id })) as {
       id?: string;
@@ -498,7 +503,7 @@ function FieldEditor({
             {
               name,
               type,
-              description,
+              description, required, adminOnly, readerIds, editorIds, formula: type==='FORMULA'?formula:undefined, defaultValue: defaultText.trim()?JSON.parse(defaultText):null,
               options: selectable
                 ? options.map(({ id, label, color }) => ({ id, label, color }))
                 : [],
@@ -586,6 +591,12 @@ function FieldEditor({
             className={`${control} mt-1 w-full`}
           />
         </label>
+        <section className="space-y-3 rounded border border-cu-border p-3">
+          {type!=='FORMULA' && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={required} onChange={e=>setRequired(e.target.checked)}/>Obligatorio para cambiar de estado</label>}
+          {['OWNER','ADMIN'].includes(authorization.role)&&<label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={adminOnly} onChange={e=>setAdminOnly(e.target.checked)}/>Visible solo para administradores</label>}
+          {['OWNER','ADMIN'].includes(authorization.role)&&<details><summary className="cursor-pointer text-sm">Permisos por persona</summary><p className="my-2 text-xs text-cu-text-secondary">Sin selección, hereda el acceso a la tarea. Los administradores siempre acceden. Un permiso de campo no concede acceso a tareas.</p>{[['Lectores',readerIds,setReaders],['Editores',editorIds,setEditors]].map(([label,ids,setter])=><fieldset key={String(label)}><legend className="text-xs font-semibold">{String(label)}</legend><div className="max-h-28 overflow-y-auto">{workspace.members.map(m=><label key={m.userId} className="flex items-center gap-2 py-1 text-xs"><input type="checkbox" checked={(ids as string[]).includes(m.userId)} onChange={e=>(setter as (ids:string[])=>void)(e.target.checked?[...(ids as string[]),m.userId]:(ids as string[]).filter(id=>id!==m.userId))}/>{m.user.name}</label>)}</div></fieldset>)}</details>}
+          {type==='FORMULA'?<><label className="block text-sm">Fórmula<input className={control+' mt-1 w-full'} required value={formula} onChange={e=>setFormula(e.target.value)} placeholder="{{ID de campo}} * 0.5"/></label><p className="text-xs text-cu-text-secondary">Admite +, −, *, / y paréntesis. Si falta un dato o hay división por cero, muestra —.</p><div className="text-xs">{catalog.fields.filter(f=>['NUMBER','MONEY','RATING','PROGRESS'].includes(f.type)).map(f=><button key={f.id} type="button" className={button+' mr-1 mb-1'} onClick={()=>setFormula(v=>v+'{{'+f.id+'}}')}>{f.name}</button>)}</div></>:<div className="block text-sm">Valor predeterminado<DefaultValueControl type={type} options={options} value={defaultText?JSON.parse(defaultText):null} onChange={value=>setDefaultText(value===null?'':JSON.stringify(value))}/><span className="text-xs text-cu-text-secondary">Se aplica a tareas nuevas. Dejá vacío para no asignar un valor.</span></div>}
+        </section>
         {selectable && (
           <section>
             <h4 className="mb-2 text-sm font-semibold">Opciones</h4>
@@ -689,6 +700,7 @@ function FieldEditor({
           </div>
         </section>
       </fieldset>
+      {field&&editable&&field.type!=='FORMULA'&&<FieldTools field={field} catalog={catalog} onSaved={onSaved}/>}
       <div className="flex justify-end gap-2">
         <button
           type="button"

@@ -1,0 +1,11 @@
+'use client';
+import type {ManagedField} from '@/lib/custom-field-model';
+const c='mt-1 min-h-9 w-full rounded border border-cu-border bg-cu-panel px-2 py-1 text-sm';
+export function DefaultValueControl({type,options,value,onChange}:{type:ManagedField['type'];options:{id?:string;label:string}[];value:unknown;onChange:(v:unknown)=>void}){
+ const available=options.filter((o):o is {id:string;label:string}=>!!o.id);
+ if(type==='CHECKBOX')return <select aria-label="Valor predeterminado" className={c} value={value===true?'true':value===false?'false':''} onChange={e=>onChange(e.target.value===''?null:e.target.value==='true')}><option value="">Sin valor predeterminado</option><option value="true">Marcada</option><option value="false">Sin marcar</option></select>;
+ if(type==='DROPDOWN')return <><select aria-label="Valor predeterminado" className={c} value={String(value??'')} onChange={e=>onChange(e.target.value||null)}><option value="">Sin valor predeterminado</option>{available.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}</select>{!available.length&&<span className="text-xs text-cu-text-secondary">Guardá las opciones para poder elegir un valor predeterminado.</span>}</>;
+ if(type==='LABELS')return <div className="mt-1 max-h-28 overflow-y-auto rounded border border-cu-border p-2">{available.map(o=><label key={o.id} className="flex items-center gap-2 py-1 text-xs"><input type="checkbox" checked={Array.isArray(value)&&value.includes(o.id)} onChange={e=>{const ids=Array.isArray(value)?value:[];onChange(e.target.checked?[...ids,o.id]:ids.filter(id=>id!==o.id))}}/>{o.label}</label>)}{!available.length&&<p className="text-xs">Guardá las opciones antes de elegir valores predeterminados.</p>}</div>;
+ const numeric=['NUMBER','MONEY','RATING','PROGRESS'].includes(type);
+ return <input aria-label="Valor predeterminado" className={c} type={numeric?'number':type==='DATE'?'date':type==='EMAIL'?'email':type==='URL'?'url':'text'} step={type==='RATING'?1:'any'} min={['RATING','PROGRESS'].includes(type)?0:undefined} max={type==='RATING'?5:type==='PROGRESS'?100:undefined} value={type==='DATE'?String(value??'').slice(0,10):String(value??'')} onChange={e=>onChange(e.target.value===''?null:numeric?Number(e.target.value):e.target.value)}/>;
+}

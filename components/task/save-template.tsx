@@ -116,7 +116,7 @@ export function TaskMenu({
           <Dialog.Content className="fixed left-1/2 top-1/2 z-[60] w-[min(380px,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-cu-panel p-4 shadow-2xl outline-none">
             <Dialog.Title className="text-[14px] font-semibold text-cu-text">Save as template</Dialog.Title>
             <p className="mt-1 text-[12px] text-cu-text-tertiary">
-              Captures the title, description, priority, and checklists.
+              Conserva título, descripción, prioridad, checklists, responsables, campos, subtareas y fechas relativas al momento de aplicar.
             </p>
             <input
               autoFocus

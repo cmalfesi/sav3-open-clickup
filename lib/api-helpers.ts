@@ -35,6 +35,7 @@ export function handleError(e: unknown): NextResponse {
   if (e instanceof ApiError || e instanceof AccessError) {
     return NextResponse.json({ error: e.message }, { status: e.status });
   }
+  if(e instanceof Error&&e.message.includes("REQUIRED_FIELDS"))return NextResponse.json({error:"Completá los campos obligatorios antes de cambiar de etapa."},{status:400});
   // Prisma "record not found" → 404
   const code = (e as { code?: string })?.code;
   if (code === "P2025") {

@@ -32,8 +32,7 @@ export async function authorizeResourceRequest(req: Request, db: D1Database, a: 
         }
     };
     let body: Record<string, unknown> = {};
-    if (mutating && req.headers.get('Content-Type')?.includes('application/json'))
-        body = await req.clone().json().catch(() => { throw new AccessError(400, 'JSON inválido.'); }) as Record<string, unknown>;
+    if (mutating && req.headers.get('Content-Type')?.includes('application/json')){try{const raw=await req.clone().text();body=raw.trim()?JSON.parse(raw) as Record<string,unknown>:{};}catch{throw new AccessError(400,'JSON inválido.');}}
     if (!body || typeof body !== 'object' || Array.isArray(body))
         throw new AccessError(400, 'JSON inválido.');
     const row = async (sql: string, id: string) => db.prepare(sql).bind(id).first<Record<string, string>>();
@@ -104,6 +103,7 @@ export async function authorizeResourceRequest(req: Request, db: D1Database, a: 
             }
         }
         else {
+            if(req.method==='GET'){const listId=new URL(req.url).searchParams.get('listId');if(!listId||!access.visibleList(listId))denied();return;}
             if (req.method !== 'POST')
                 denied();
             assert('LIST', String(body.listId), 'EDIT');
@@ -155,6 +155,7 @@ export async function authorizeResourceRequest(req: Request, db: D1Database, a: 
                 descendants('LIST', l.id);
         }
     }
+    else if(kind==='views'&&!id){if(req.method!=='POST')denied();assert('LIST',String(body.listId),'EDIT');}
     else if (['views', 'statuses'].includes(kind)) {
         const r = await row(`SELECT listId FROM ${kind === 'views' ? 'View' : 'Status'} WHERE id=?`, id);
         if (!r)

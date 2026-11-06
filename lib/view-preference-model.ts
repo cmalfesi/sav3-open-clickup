@@ -1,11 +1,12 @@
 import { z } from 'zod';
+import {fieldFilterSchema} from './advanced-filters';
 import type { ViewState } from './view-state';
 
 const ids=z.array(z.string().min(1).max(220)).max(200);
 export const personalViewStateSchema=z.object({
- filters:z.object({priorities:z.array(z.enum(['URGENT','HIGH','NORMAL','LOW'])).max(4),assignees:ids,tags:ids}),
+ filters:z.object({priorities:z.array(z.enum(['URGENT','HIGH','NORMAL','LOW'])).max(4),assignees:ids,tags:ids,statuses:ids.optional(),dueFrom:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),dueTo:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),noDueDate:z.boolean().optional(),custom:z.array(fieldFilterSchema).max(50).optional()}),
  sort:z.object({field:z.enum(['priority','dueDate','name','created']).nullable(),dir:z.enum(['asc','desc'])}),
- groupBy:z.enum(['status','assignee','priority','none']),
+ groupBy:z.union([z.enum(['status','assignee','priority','none']),z.string().regex(/^field:.{1,200}$/).transform(v=>v as `field:${string}`)]),
 });
 const flags=z.record(z.string().min(1).max(400),z.boolean());
 export const viewPreferenceSchema=z.object({
@@ -35,6 +36,6 @@ export function applyPreferencePatch(data:ListViewPreferences,patch:PreferencePa
 }
 export function viewStateFromConfig(config:unknown):ViewState {
  const c=(config&&typeof config==='object'?config:{}) as Partial<ViewState>;
- const parsed=personalViewStateSchema.safeParse({filters:{priorities:c.filters?.priorities??[],assignees:c.filters?.assignees??[],tags:c.filters?.tags??[]},sort:{field:c.sort?.field??null,dir:c.sort?.dir??'asc'},groupBy:c.groupBy??'status'});
+ const parsed=personalViewStateSchema.safeParse({filters:{...c.filters,priorities:c.filters?.priorities??[],assignees:c.filters?.assignees??[],tags:c.filters?.tags??[]},sort:{field:c.sort?.field??null,dir:c.sort?.dir??'asc'},groupBy:c.groupBy??'status'});
  return parsed.success?parsed.data:{filters:{priorities:[],assignees:[],tags:[]},sort:{field:null,dir:'asc'},groupBy:'status'};
 }

@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useSiteRouter as useRouter } from "@/lib/site-navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { Search, List as ListIcon, CornerDownLeft } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { StatusCircle } from "@/components/menus/status-control";
 import type { StatusType } from "@/lib/enums";
 
-type SearchResult = {
+type SearchResult = { nextOffset:number|null;
   tasks: {
     id: string;
     name: string;
@@ -42,12 +42,15 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     if (open) { setQ(""); setDebounced(""); setActive(0); }
   }, [open]);
 
-  const { data } = useQuery({
+  const { data: pages, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ["search", debounced],
-    queryFn: () => apiGet<SearchResult>(`/api/search?q=${encodeURIComponent(debounced)}`),
+    initialPageParam:0,
+    getNextPageParam:(last:SearchResult)=>last.nextOffset??undefined,
+    queryFn: ({pageParam}) => apiGet<SearchResult>(`/api/search?q=${encodeURIComponent(debounced)}&offset=${pageParam}`),
     enabled: open && debounced.length > 0,
   });
 
+  const data=useMemo(()=>pages?{tasks:pages.pages.flatMap(p=>p.tasks),lists:pages.pages[0].lists}:undefined,[pages]);
   const flat = useMemo<Flat[]>(() => {
     if (!data) return [];
     return [
@@ -99,12 +102,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               autoFocus
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search tasks and lists…"
+              placeholder="Buscar títulos, descripciones y campos…"
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-cu-text-tertiary"
             />
             <kbd className="rounded bg-cu-hover px-1.5 py-0.5 text-[10px] text-cu-text-tertiary">ESC</kbd>
           </div>
 
+          {hasNextPage&&<button className="m-2 rounded border border-cu-border px-3 py-2 text-xs" disabled={isFetchingNextPage} onClick={()=>void fetchNextPage()}>{isFetchingNextPage?"Buscando…":"Cargar más resultados"}</button>}
           <div ref={listRef} className="max-h-[400px] overflow-y-auto p-1.5">
             {debounced && flat.length === 0 && (
               <div className="px-3 py-8 text-center text-[13px] text-cu-text-tertiary">No results for “{debounced}”</div>

@@ -7,7 +7,7 @@ const publicFiles = new Set([
 ]);
 
 export function publicAccess(pathname: string): "page" | "asset" | null {
-  if (pathname === "/" || pathname === "/login" || pathname === "/activate") return "page";
+  if (pathname === "/" || pathname === "/login" || pathname === "/activate" || pathname === "/reset-password") return "page";
   if (publicFiles.has(pathname)) return "asset";
   if (pathname.startsWith("/_next/static/") &&
       !pathname.includes("%") && !pathname.includes("\\")) return "asset";

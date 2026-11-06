@@ -14,6 +14,7 @@ export const fieldTypes = {
   PHONE: "Teléfono",
   RATING: "Valoración",
   PROGRESS: "Progreso",
+  FORMULA: "Fórmula",
 } as const;
 export const locationSchema = z.object({
   type: z.enum(["SPACE", "LIST"]),
@@ -41,6 +42,12 @@ export const fieldSchema = z
       .max(500)
       .default([]),
     locations: z.array(locationSchema).min(1).max(200),
+    required: z.boolean().optional(),
+    adminOnly: z.boolean().optional(),
+    readerIds: z.array(z.string().min(1).max(200)).max(200).optional(),
+    editorIds: z.array(z.string().min(1).max(200)).max(200).optional(),
+    defaultValue: z.unknown().optional(),
+    formula: z.string().trim().max(1000).optional(),
     revision: z.number().int().nonnegative().optional(),
   })
   .superRefine((value, ctx) => {
@@ -75,6 +82,7 @@ export type ManagedField = {
   locations: (FieldLocation & { name: string })[];
   revision: number;
   canEdit: boolean;
+  required?: boolean; adminOnly?: boolean; readerIds?: string[]; editorIds?: string[]; defaultValue?: unknown; formula?: string;
   createdBy: string | null;
   createdAt: number | null;
 };

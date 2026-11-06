@@ -1,3 +1,4 @@
+import {sendTransactionalMail,type MailEnvironment} from "./mail-service";
 import { dashboardRoute } from "./dashboard-service";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -17,8 +18,8 @@ function graphStatements(db: D1Database) {
     return [
         db.prepare('SELECT id,name FROM Space'),
         db.prepare('SELECT id,name,spaceId FROM List'),
-        db.prepare('SELECT id,name,listId,parentId FROM Task'),
-        db.prepare('SELECT id,name FROM Dashboard'),
+        db.prepare("SELECT id,name,listId,parentId FROM Task WHERE NOT EXISTS(SELECT 1 FROM TrashEntity e WHERE e.kind='TASK' AND e.entityId=Task.id)"),
+        db.prepare("SELECT id,name FROM Dashboard WHERE NOT EXISTS(SELECT 1 FROM TrashEntity e WHERE e.kind='DASHBOARD' AND e.entityId=Dashboard.id)"),
     ];
 }
 function graphFromResults(results: D1Result[]): Resource[] {
@@ -40,7 +41,7 @@ export async function loadActor(db: D1Database, req: Request): Promise<Actor | n
     const authorization = req.headers.get("Authorization");
     if(authorization) {
         const path=new URL(req.url).pathname;
-        if(!(path==='/mcp'||path==='/api/integrations/mcp'||/^\/api\/(tasks|comments|lists|search)(\/|$)/.test(path)))return null;
+        if(!(path==='/mcp'||path==='/api/integrations/mcp'||/^\/api\/(tasks|comments|lists|search|custom-fields|views|reminders|historical|workflows|dashboards)(\/|$)/.test(path)))return null;
         const bearer = /^Bearer (sav3_[a-f0-9]{64})$/.exec(authorization)?.[1];
         if(!bearer)return null;
         const linked=await db.prepare(`SELECT ${userColumns},m.role,a.scopeAll,t.scope FROM IntegrationToken t JOIN User u ON u.id=t.userId JOIN AccountAccess a ON a.userId=u.id AND a.enabled=1 JOIN WorkspaceMember m ON m.userId=u.id AND m.workspaceId=? WHERE t.tokenHash=? AND t.revoked=0 AND t.expiresAt>?`).bind(WORKSPACE,digest(bearer),Date.now()).first<User & {role:Role;scopeAll:number;scope:"read"|"write"}>();
@@ -105,7 +106,7 @@ export async function loadActor(db: D1Database, req: Request): Promise<Actor | n
     return { tokenScope, clientId: /^[a-f0-9-]{36}$/i.test(clientId) ? clientId : undefined, user: safeUser, role, workspaceId: WORKSPACE, kind, sessionId, access: new Access(role, scopeAll, resources, grants, policies.map(p => `${p.resourceType}:${p.resourceId}`)) };
 }
 async function audit(db: D1Database, a: Actor, action: string, target: string) { await db.prepare('INSERT INTO AccessAudit (id,actorId,action,targetId,createdAt) VALUES (?,?,?,?,?)').bind(randomUUID(), a.user.id, action, target, Date.now()).run(); }
-async function throttle(db: D1Database, key: string, limit = 12) {
+export async function throttle(db: D1Database, key: string, limit = 12) {
     const now = Date.now();
     const row = await db.prepare('INSERT INTO AuthThrottle (key,count,resetAt) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN resetAt<? THEN 1 ELSE count+1 END,resetAt=CASE WHEN resetAt<? THEN ? ELSE resetAt END RETURNING count').bind(digest(key), now + 900000, now, now, now + 900000).first<{
         count: number;
@@ -131,14 +132,14 @@ function validateAccess(a: Actor, data: z.infer<typeof accessSchema>) {
         seen.add(k);
     }
 }
-async function newSession(db: D1Database, req: Request, userId: string) {
+export async function newSession(db: D1Database, req: Request, userId: string) {
     const raw = token();
     await db.prepare('INSERT INTO Session (id,userId,expiresAt) VALUES (?,?,?)').bind(digest(raw), userId, new Date(Date.now() + SESSION_SECONDS * 1000).toISOString()).run();
     return Response.json({ ok: true }, { headers: { "Set-Cookie": sessionCookie(req, raw) } });
 }
 const publicEndpoints = new Set(["/api/auth/login", "/api/auth/invitation", "/api/auth/activate"]);
 export const isPublicAuth = (path: string) => publicEndpoints.has(path);
-export async function teamRoute(req: Request, db: D1Database, a: Actor | null): Promise<Response | null> {
+export async function teamRoute(req: Request, db: D1Database, a: Actor | null, mailEnv:MailEnvironment={}): Promise<Response | null> {
     const path = new URL(req.url).pathname;
     if(path==='/api/dashboards')return dashboardRoute(req,db,a);
     if (!isPublicAuth(path) && !path.startsWith('/api/team') && path !== '/api/auth/logout' && path !== '/api/account/password' && path !== '/api/dashboards')
@@ -253,7 +254,9 @@ export async function teamRoute(req: Request, db: D1Database, a: Actor | null): 
                 db.prepare('INSERT INTO Invitation (id,tokenHash,userId,email,role,scopeAll,grants,expiresAt,createdAt,createdBy) VALUES (?,?,?,?,?,?,?,?,?,?)').bind(id, digest(raw), uid, email, data.role, data.scopeAll ? 1 : 0, JSON.stringify(data.grants), expiresAt, Date.now(), a.user.id)
             ]);
             await audit(db, a, 'invitation.create', id);
-            return Response.json({ id, url: new URL('/activate', req.url).href + '#token=' + raw, email, expiresAt, sent: false });
+            const inviteUrl=new URL('/activate',req.url).href+'#token='+raw;
+            const delivery=await sendTransactionalMail(mailEnv,email,'Tu invitación al espacio de trabajo','Abrí el enlace y elegí tu contraseña. Vence en 7 días y se usa una sola vez:\n\n'+inviteUrl,'invitation:'+id);
+            return Response.json({id,url:inviteUrl,email,expiresAt,...delivery});
         }
         if (path === '/api/team/invitations/revoke' && req.method === 'POST') {
             const { id } = validate(z.object({ id: z.string() }), body);

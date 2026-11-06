@@ -1,65 +1,26 @@
-# SAV3 · Open ClickUp — código de producción v20
+# Access model
 
-Esta copia exporta el código compartible de la versión 20 publicada en Sites,
-sobre el upstream
-`goshops-com/open-clickup` (`fd92240fbcec674afed5096b61f9414d16d1b653`).
+The public entry page is separate from the protected workspace. The Worker runs
+before static assets and authorizes restored attachments, SSR documents, API
+routes and MCP using the existing verified Site identity. Imported user records
+do not grant access. Only the current owner is enabled until membership and
+additional identity providers are configured.
 
-Incluye ingreso por contraseña, invitaciones, roles, Settings, permisos por
-recurso, dashboards básicos, navegación corregida y adaptación a D1/R2.
-El envío de invitaciones por correo sigue siendo manual. La versión 6 evita
-volver a mostrar la pantalla de importación al navegar por espacios ya restaurados.
+Direct Google SSO is not configured. Do not describe the ChatGPT sign-in button
+as Google SSO. A Google application and a compatible identity integration must
+be configured before enabling it.
 
-La versión 7 agrupa lecturas D1, actualiza tareas sin recargar la lista completa,
-muestra guardados pendientes y revierte cambios rechazados.
+# SAV3 · Open ClickUp Lab
 
-## Código y datos
+Private trial fork of goshops-com/open-clickup at fd92240fbcec674afed5096b61f9414d16d1b653, configured from the ClickUp backup dated 2026-10-30. The deployment uses Sites authentication, D1 and R2. It does not connect to or modify the original ClickUp workspace.
 
-El código de la aplicación coincide con ese commit de producción. Los datos
-privados del backup, documentos, adjuntos y la identidad del despliegue no forman
-parte de este repositorio público. No se ha migrado la base de datos de producción.
-`PRODUCTION_SOURCE.json` registra qué archivos coinciden con producción y qué
-archivos se excluyeron o adaptaron para distribuir el código.
+Open the private Site while signed in to initialize the resumable restore. Imported people are attribution/assignment records, not active logins. Password signup, login and the upstream development impersonation endpoint are disabled. The Site is restricted to its owner.
 
-No mezcles el historial privado de Sites: contiene datos del respaldo.
+The source repository's `IMPORT_REPORT.json` records coverage and differences. Native dashboard widgets, original ACLs, advanced view configuration and unsupported field behavior are not claimed to be restored. Historical recurrence is not activated. Task types use a custom dropdown.
 
-## Abrir en VS Code
+The Site exposes owner-authorized MCP tools for preparing the copy, reading workspace and tasks, creating/updating tasks and adding comments. Publishing with the MCP capability creates the Site's personal plugin. No separate API key is required.
 
-Desde una copia del repositorio, abrí la carpeta raíz (la que contiene
-`package.json`). No necesitás instalar dependencias para leer o editar archivos.
-Para compilar, usá Node 22.13+ y la versión de pnpm fijada en `package.json`:
-
-```bash
-pnpm install --frozen-lockfile
-pnpm prepare:data
-pnpm prisma:generate
-pnpm exec tsc --noEmit
-pnpm test
-pnpm build
-```
-
-Los ejemplos contienen datos sintéticos. Para iniciar una instancia utilizable
-hace falta inicializar D1 y sus cuentas; el build por sí solo no crea usuarios,
-contraseñas ni recupera la base de producción. El acceso del propietario en
-producción sigue vinculado a Sites. No hay una contraseña predeterminada.
-
-## Importar un respaldo autorizado
-
-Mantené el respaldo extraído fuera del checkout:
-
-```bash
-python3 scripts/import-clickup-backup.py --backup /ruta/absoluta/al/respaldo --project "$PWD"
-```
-
-Ese comando escribe archivos locales privados ignorados por Git. No cambia el
-esquema: aplicá siempre las migraciones Drizzle comprometidas antes de restaurar
-los datos. No uses `git add -f` para incorporar los archivos del respaldo.
-
-## Publicación
-
-Esta entrega sincroniza código, sin volver a desplegar ni cambiar producción.
-Un despliegue posterior requiere configurar el Site de destino y sus bindings.
-No subas credenciales a Git. La publicación no importa automáticamente datos,
-usuarios activos, contraseñas ni sesiones desde otra instancia.
+Verification: generated schema and seed are validated together, including foreign keys, record counts and idempotency. Typecheck, build and the applicable upstream unit tests must pass. Managed preview requires a real ChatGPT identity; do not introduce an authentication bypass for preview.
 
 ## Custom Field Manager
 
@@ -75,7 +36,6 @@ to every explicit List location. Used options must be cleared from tasks before
 removal, and simultaneous definition edits are checked using revisions.
 
 ## Upstream documentation
-
 
 <div align="center">
 
@@ -264,6 +224,42 @@ principles, the end-to-end workflow, and the [decision records](docs/decisions/)
 
 <sub>ClickUp® is a trademark of its respective owner; this is an independent project and is not affiliated with or endorsed by ClickUp.</sub>
 
+### Equipo SAV3: invitaciones y permisos
+
+En **Configuración → Usuarios**, el propietario o un administrador crea una
+invitación indicando email, rol y recursos compartidos. El enlace vence en siete
+días y funciona una sola vez. La persona abre el enlace y elige nombre y
+contraseña de al menos doce caracteres. No hay registro público abierto.
+
+El envío es **manual**: copiá el enlace o usá «Enviar desde mi correo». No hay
+proveedor de correo transaccional configurado y el sitio no afirma que el email
+haya sido enviado. Si se pierde el enlace, creá otra invitación; la anterior se
+revoca. Para recuperar una cuenta, revocá su acceso y volvé a invitarla. El acceso
+nativo del propietario con ChatGPT sigue disponible.
+
+Roles de esta implementación: propietario y administrador con acceso global;
+miembro con permisos heredados o directos; invitado de solo lectura. Solo el
+propietario puede designar administradores. Los usuarios importados del backup
+conservan su autoría, pero necesitan una invitación para acceder.
+
+Los niveles directos son ver, comentar, editar y sin acceso, por espacio, lista,
+tarea o dashboard. Las tareas heredan de su lista y las subtareas de su tarea
+padre. Un permiso directo reemplaza el heredado. «Recurso privado» corta la
+herencia. Una tarea compartida individualmente aparece dentro de una navegación
+mínima a su lista, sin revelar las demás tareas. Administradores y propietario
+pueden revisar todos los recursos, incluidos los privados.
+
+Los dashboards ofrecen conteos de tareas visibles, completadas y pendientes.
+Su permiso de visualización nunca amplía el acceso a las tareas fuente. No son
+el constructor completo de widgets de ClickUp. Documentos recuperados, informe
+del backup, plantillas globales y MCP quedan reservados a administradores y
+propietario en esta versión. Cambios estructurales que afectarían tareas privadas
+requieren permiso de edición sobre esas tareas también.
+
+Las sesiones locales vencen a las doce horas; cambiar permisos o revocar acceso
+cierra las sesiones. Las cuentas nuevas se activan por invitación y sus permisos
+se validan en cada solicitud. El stream de cambios se renueva cada minuto.
+
 ## Colaboración y conexiones personales
 
 En Configuración → Conexiones LLM, cada persona puede crear una conexión con vencimiento y alcance de lectura o escritura. Se muestra el token una sola vez; puede revocarse sin afectar otras conexiones. Los permisos sobre espacios, listas y tareas se verifican en cada operación.
@@ -285,7 +281,7 @@ En Editar dashboard, agregá tarjetas de indicadores, barras, torta, líneas, li
 
 Las agrupaciones soportan estados, responsables, prioridades, etiquetas, listas, fechas y campos personalizados. Los cálculos incluyen conteos, suma, promedio, mínimo, máximo y porcentaje de tareas completadas. Los campos vacíos no se convierten en cero. Al hacer clic en un indicador o grupo se pueden abrir las tareas correspondientes.
 
-Compartir un dashboard no comparte las tareas: cada usuario ve sus propios datos autorizados. El panel permite actualización manual, individual por tarjeta o automática cada 30 segundos, pausada durante la edición. El historial identifica al autor de cada revisión; una versión desactualizada no puede sobrescribir otra más reciente. Archivar un panel es reversible desde Mostrar archivados. Su creador o un administrador puede eliminarlo definitivamente desde el listado de Dashboards. Las tareas y listas fuente se conservan.
+Compartir un dashboard no comparte las tareas: cada usuario ve sus propios datos autorizados. El panel permite actualización manual, individual por tarjeta o automática cada 30 segundos, pausada durante la edición. El historial identifica al autor de cada revisión; una versión desactualizada no puede sobrescribir otra más reciente. Archivar un panel es reversible desde Mostrar archivados. Desde el listado de Dashboards, su creador o un administrador también puede eliminarlo definitivamente previa confirmación. Se eliminan sus vistas y configuración, y se conservan las tareas y listas fuente.
 
 
 ### Controles de las tarjetas
@@ -311,7 +307,10 @@ Cada usuario conserva una configuración independiente por lista y por vista. Se
 
 Las preferencias se guardan en la cuenta y pueden recuperarse en otro dispositivo después de sincronizar. Los cambios pendientes también se guardan localmente, cuando el navegador lo permite, para reintentarlos al volver o recuperar conexión. Si falla el guardado se muestra **Guardado personal pendiente** con un botón de reintento. Estas preferencias no cambian tareas ni la configuración del resto del equipo; incluso un invitado puede recordar su presentación sin ganar permisos de edición. La composición y los filtros del dashboard configurable siguen su flujo explícito de edición/guardado compartido.
 
+## SAV3 0.12.0
 
-### Enlaces en tareas
-
-Las URLs escritas, pegadas o guardadas como texto en descripciones, comentarios y respuestas se abren en otra pestaña.
+Operational configuration now includes advanced custom fields, normal view creation/duplication,
+content search, bulk editing, richer templates, recoverable task/dashboard deletion, portable
+backups, audit, reminders, rules, stage history, exports and expanded API/MCP integration.
+See [the release and activation guide](docs/RELEASE-0.12.0.md) for exact behavior,
+provider configuration, scheduling verification, recovery and limits.

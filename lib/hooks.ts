@@ -1,4 +1,5 @@
 "use client";
+import {toast} from "sonner";
 
 import {
   useMutation,
@@ -112,8 +113,9 @@ export function useApplyTemplate(listId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (templateId: string) =>
-      apiSend<TaskWithRelations>(`/api/lists/${listId}/apply-template`, "POST", { templateId }),
-    onSuccess: () => {
+      apiSend<TaskWithRelations & {skippedFields?:number}>(`/api/lists/${listId}/apply-template`, "POST", { templateId }),
+    onSuccess: task => {
+      if(task.skippedFields)toast.warning(`${task.skippedFields} campos de la plantilla no se aplicaron porque cambiaron sus opciones, permisos o ubicación.`);
       if (listId) qc.invalidateQueries({ queryKey: ["list", listId] });
     },
   });
@@ -237,9 +239,11 @@ export function useBulk(listId: string | undefined) {
   return useMutation({
     mutationFn: (input: {
       ids: string[];
-      patch?: { statusId?: string; priority?: string | null; assigneeIds?: string[] };
+      patch?: { statusId?: string; priority?: string | null; assigneeIds?: string[]; tagIds?: string[]; dueDate?: string | null; archived?: boolean };
+      customField?: {fieldId:string;value:unknown};
       delete?: boolean;
-    }) => apiSend("/api/tasks/bulk", "POST", input),
+    }) => apiSend<{updated?:number;failed?:{id:string;error:string}[]}>("/api/tasks/bulk", "POST", input),
+    onSuccess:result=>{if(result.failed?.length)toast.error(`${result.updated??0} guardadas · ${result.failed.length} sin cambios: ${result.failed[0].error}`);},
     onSettled: () => {
       if (listId) qc.invalidateQueries({ queryKey: ["list", listId] });
     },

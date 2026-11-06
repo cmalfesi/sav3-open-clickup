@@ -1,8 +1,10 @@
 "use client";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import {useState} from "react";
+import {CustomFieldControl} from "./custom-field-control";
 import { X, Trash2, Flag } from "lucide-react";
-import type { StatusModel } from "@/lib/queries";
+import type { StatusModel, CustomFieldWithOptions } from "@/lib/queries";
 import { Priority } from "@/lib/enums";
 import { PRIORITY_ORDER, PRIORITY_CONFIG } from "@/lib/constants";
 import { PriorityFlag } from "@/components/ui/primitives";
@@ -17,8 +19,9 @@ export function BulkBar({
   onSetPriority,
   onSetAssignees,
   onDelete,
-  onClear,
+  onClear, fields = [], onField, onArchive, onDueDate,
 }: {
+  fields?: CustomFieldWithOptions[]; onField?: (fieldId:string,value:unknown)=>void; onArchive?:()=>void; onDueDate?:(value:string|null)=>void;
   count: number;
   statuses: StatusModel[];
   onSetStatus: (statusId: string) => void;
@@ -27,12 +30,13 @@ export function BulkBar({
   onDelete: () => void;
   onClear: () => void;
 }) {
+  const [fieldId,setFieldId]=useState(''),[value,setValue]=useState<unknown>(null);
   const { workspace } = useWorkspace();
   const members = workspace.members.map((m) => m.user);
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-5 z-40 flex justify-center">
-      <div className="pointer-events-auto flex items-center gap-1 rounded-xl border border-black/20 bg-[#23262f] px-2 py-1.5 text-white shadow-2xl">
+      <div className="pointer-events-auto flex max-w-[96vw] flex-wrap items-center gap-1 rounded-xl border border-black/20 bg-[#23262f] px-2 py-1.5 text-white shadow-2xl">
         <span className="flex items-center gap-1.5 px-2 text-[13px] font-medium">
           <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-cu-purple px-1.5 text-[11px] font-bold">
             {count}
@@ -66,6 +70,9 @@ export function BulkBar({
           <AssignPicker members={members} onApply={onSetAssignees} />
         </BarMenu>
 
+        {onField && fields.length>0 && <BarMenu label="Campos"><div className="space-y-2 p-2"><select aria-label="Campo a editar en lote" className="w-full rounded border border-cu-border bg-cu-panel p-1 text-xs" value={fieldId} onChange={e=>{setFieldId(e.target.value);setValue(null)}}><option value="">Elegir campo</option>{fields.filter(f=>f.type!=='FORMULA').map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select>{fields.find(f=>f.id===fieldId)&&<CustomFieldControl field={fields.find(f=>f.id===fieldId)!} value={value} onChange={setValue}/>}<button className="rounded bg-cu-purple px-2 py-1 text-xs text-white disabled:opacity-50" disabled={!fieldId} onClick={()=>onField(fieldId,value)}>Aplicar a {count} tareas</button></div></BarMenu>}
+        {onDueDate&&<BarMenu label="Fecha"><label className="block p-2 text-xs">Vencimiento<input type="date" className="mt-1 w-full rounded border border-cu-border bg-cu-panel p-2" onChange={e=>onDueDate(e.target.value?new Date(e.target.value+'T12:00:00').toISOString():null)}/></label></BarMenu>}
+        {onArchive&&<button className="px-2 text-xs" onClick={onArchive}>Archivar</button>}
         <button
           onClick={onDelete}
           className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] hover:bg-white/10"

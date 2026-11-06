@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import {snapshotTaskMetadata} from "@/lib/template-metadata";
+import {actor} from "@/lib/access-context";
+import { getD1, prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 import { ApiError, readJson, route } from "@/lib/api-helpers";
 
@@ -45,5 +47,6 @@ export const POST = route(async (req) => {
       checklists,
     },
   });
+  await snapshotTaskMetadata(getD1(),actor(),task.id,template.id);
   return NextResponse.json(template, { status: 201 });
 });
