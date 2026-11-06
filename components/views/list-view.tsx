@@ -103,7 +103,7 @@ export function ListView({
         tasks: cols[s.id] ?? [],
       }));
     }
-    return groupTasks(tasks, groupBy, { statuses, members });
+    return groupTasks(tasks, groupBy, { statuses, members, fields: list.customFields });
   }, [sortable, cols, tasks, groupBy, statuses, members]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -198,6 +198,10 @@ export function ListView({
       {selected.size > 0 && (
         <BulkBar
           count={selected.size}
+          fields={list.customFields}
+          onField={(fieldId,value)=>bulk.mutate({ids:[...selected],customField:{fieldId,value}})}
+          onDueDate={dueDate=>bulk.mutate({ids:[...selected],patch:{dueDate}})}
+          onArchive={()=>{bulk.mutate({ids:[...selected],patch:{archived:true}});clearSelect();}}
           statuses={statuses}
           onSetStatus={(statusId) => bulk.mutate({ ids: [...selected], patch: { statusId } })}
           onSetPriority={(priority) => bulk.mutate({ ids: [...selected], patch: { priority } })}

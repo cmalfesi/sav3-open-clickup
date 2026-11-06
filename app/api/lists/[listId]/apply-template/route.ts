@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import {applyTaskMetadata} from "@/lib/template-metadata";
+import {actor} from "@/lib/access-context";
+import {getTaskDetail} from "@/lib/queries";
+import { getD1, prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 import { taskInclude } from "@/lib/queries";
 import { ApiError, readJson, route } from "@/lib/api-helpers";
@@ -52,6 +55,7 @@ export const POST = route(async (req, { params }: Ctx) => {
   await prisma.activity.create({
     data: { taskId: task.id, userId: user.id, type: "created", data: { fromTemplate: template.name } },
   });
+  const metadata=await applyTaskMetadata(getD1(),actor(),templateId,task.id,listId);
   publish({ type: "list", listId });
-  return NextResponse.json(task, { status: 201 });
+  return NextResponse.json({...task,...metadata}, { status: 201 });
 });

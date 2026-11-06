@@ -1,4 +1,4 @@
-import type { TaskWithRelations, StatusModel, UserLite } from "@/lib/queries";
+import type { TaskWithRelations, StatusModel, UserLite, CustomFieldWithOptions } from "@/lib/queries";
 import type { GroupBy } from "@/lib/view-state";
 import { PRIORITY_CONFIG, PRIORITY_ORDER } from "@/lib/constants";
 
@@ -16,8 +16,17 @@ export type TaskGroup = {
 export function groupTasks(
   tasks: TaskWithRelations[],
   groupBy: GroupBy,
-  ctx: { statuses: StatusModel[]; members: UserLite[] },
+  ctx: { statuses: StatusModel[]; members: UserLite[]; fields?: CustomFieldWithOptions[] },
 ): TaskGroup[] {
+  if(groupBy.startsWith('field:')){
+    const id=groupBy.slice(6),field=ctx.fields?.find(f=>f.id===id);
+    const groups=new Map<string,TaskGroup>();
+    for(const t of tasks){const value=t.customFieldValues.find(v=>v.customFieldId===id)?.value;
+      const keys=value===null||value===undefined||value===''?['__empty']:Array.isArray(value)?value.map(String):[String(value)];
+      for(const key of keys.length?keys:['__empty']){const option=field?.options.find(o=>o.id===key);const group=groups.get(key)??{id:'field:'+id+':'+key,label:key==='__empty'?'Sin valor':option?.label??key,color:option?.color??'#87909e',tasks:[]};group.tasks.push(t);groups.set(key,group);}
+    }
+    return [...groups.values()];
+  }
   switch (groupBy) {
     case "none":
       return [{ id: "all", label: "All tasks", color: "#87909e", tasks }];

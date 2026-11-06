@@ -8,7 +8,7 @@ export async function changeTargets(req:Request,db:D1Database,a:Actor):Promise<C
  let ids:string[]=[], listId:string|undefined;
  if(p[0]==='mcp'||(p[1]==='integrations'&&p[2]==='mcp')){
   const rpc=body as {method?:string;params?:{name?:string;arguments?:Record<string,unknown>}};
-  if(rpc.method!=='tools/call'||!['create_task','update_task','add_comment'].includes(rpc.params?.name??''))return [];
+  if(rpc.method!=='tools/call'||!['create_task','update_task','add_comment','set_custom_field'].includes(rpc.params?.name??''))return [];
   const args=rpc.params?.arguments??{};if(typeof args.task_id==='string')ids=[args.task_id];if(typeof args.list_id==='string')listId=args.list_id;
  }else if(p[0]==='api'&&p[1]==='tasks'){
   ids=p[2]==='bulk'?(Array.isArray(body.ids)?body.ids.filter((id):id is string=>typeof id==='string'):[]):p[2]?[p[2]]:[];

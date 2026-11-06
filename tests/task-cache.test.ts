@@ -14,7 +14,7 @@ function task(id="t"):TaskWithRelations {return {id,listId:"l",statusId:"open",p
 function setup() {
   const qc=new QueryClient({defaultOptions:{mutations:{retry:false}}});
   const original=task();
-  qc.setQueryData(["list","l"],{list:{id:"l",name:"List",spaceId:"s",folderId:null,color:null,icon:null,position:0,createdAt:new Date(),space:{id:"s",name:"Space",color:"#000",icon:null},folder:null,customFields:[],views:[],statuses:[open,done]},tasks:[original,task("other")],dependencies:[],deletableViewIds:[]} as ListData);
+  qc.setQueryData(["list","l"],{list:{id:"l",name:"List",spaceId:"s",folderId:null,color:null,icon:null,position:0,createdAt:new Date(),space:{id:"s",name:"Space",color:"#000",icon:null},folder:null,customFields:[],views:[],statuses:[open,done]},tasks:[original,task("other")],dependencies:[],deletableViewIds:[],canCreateView:true,manageableViewIds:[]} as ListData);
   qc.setQueryData(["task","t"],{...original,list:{id:"l",statuses:[open,done]},activities:[],watchers:[]} as unknown as TaskDetail);
   return {qc,original,read:()=>qc.getQueryData<ListData>(["list","l"])!,edit:()=>new MutationObserver(qc,taskUpdateOptions(qc,"l"))};
 }

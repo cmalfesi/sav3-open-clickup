@@ -10,7 +10,8 @@ import { PRIORITY_ORDER, PRIORITY_CONFIG } from "@/lib/constants";
 import { PriorityFlag } from "@/components/ui/primitives";
 import { Avatar } from "@/components/ui/avatar";
 import { useWorkspace } from "@/components/workspace-context";
-import type { TaskWithRelations } from "@/lib/queries";
+import { AdvancedFilterControls } from "./advanced-filter-controls";
+import type { CustomFieldWithOptions, StatusModel, TaskWithRelations } from "@/lib/queries";
 
 const SORT_LABELS: Record<Exclude<SortField, null>, string> = {
   priority: "Priority",
@@ -22,11 +23,11 @@ const SORT_LABELS: Record<Exclude<SortField, null>, string> = {
 export function FilterMenu({
   state,
   onChange,
-  tasks,
+  tasks, fields = [], statuses = [], assigneeOnly = false,
 }: {
   state: ViewState;
   onChange: (s: ViewState) => void;
-  tasks: TaskWithRelations[];
+  tasks: TaskWithRelations[]; fields?: CustomFieldWithOptions[]; statuses?: StatusModel[]; assigneeOnly?: boolean;
 }) {
   const { workspace } = useWorkspace();
   const members = workspace.members.map((m) => m.user);
@@ -52,7 +53,7 @@ export function FilterMenu({
           )}
         >
           <SlidersHorizontal className="h-4 w-4" />
-          <span className="hidden sm:inline">Filter</span>
+          <span className="hidden sm:inline">{assigneeOnly ? "Responsables" : "Filtros"}</span>
           {count > 0 && (
             <span className="rounded-full bg-cu-purple px-1.5 text-[10px] font-semibold text-white">{count}</span>
           )}
@@ -113,6 +114,7 @@ export function FilterMenu({
               ))}
             </>
           )}
+          {!assigneeOnly && <AdvancedFilterControls state={state} onChange={onChange} fields={fields} statuses={statuses}/>}
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
@@ -139,7 +141,7 @@ function Row({
   );
 }
 
-const GROUP_LABELS: Record<GroupBy, string> = {
+const GROUP_LABELS: Record<string, string> = {
   status: "Status",
   assignee: "Assignee",
   priority: "Priority",
@@ -147,10 +149,10 @@ const GROUP_LABELS: Record<GroupBy, string> = {
 };
 
 export function GroupMenu({
-  state,
+  state, fields = [],
   onChange,
 }: {
-  state: ViewState;
+  state: ViewState; fields?: CustomFieldWithOptions[];
   onChange: (s: ViewState) => void;
 }) {
   const active = state.groupBy !== "status";
@@ -164,7 +166,7 @@ export function GroupMenu({
           )}
         >
           <Layers className="h-4 w-4" />
-          <span className="hidden sm:inline">Group: {GROUP_LABELS[state.groupBy]}</span>
+          <span className="hidden sm:inline">Group: {GROUP_LABELS[state.groupBy] ?? fields.find(f => "field:"+f.id===state.groupBy)?.name ?? "Campo"}</span>
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
@@ -174,13 +176,13 @@ export function GroupMenu({
           className="z-50 min-w-[180px] rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg"
         >
           <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-cu-text-tertiary">Group by</div>
-          {(Object.keys(GROUP_LABELS) as GroupBy[]).map((g) => (
+          {([...Object.keys(GROUP_LABELS),...fields.map(f=>"field:"+f.id)] as GroupBy[]).map((g) => (
             <DropdownMenu.Item
               key={g}
               onSelect={(e) => { e.preventDefault(); onChange({ ...state, groupBy: g }); }}
               className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none hover:bg-cu-hover"
             >
-              {GROUP_LABELS[g]}
+              {GROUP_LABELS[g] ?? fields.find(f=>"field:"+f.id===g)?.name}
               {state.groupBy === g && <Check className="ml-auto h-3.5 w-3.5 text-cu-purple" />}
             </DropdownMenu.Item>
           ))}

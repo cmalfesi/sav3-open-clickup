@@ -1,3 +1,4 @@
+import {applyFieldDefaults,enforceRequiredFields,decorateFieldValues} from "./field-runtime";
 import { AccessError, actorOrNull } from "./access-context";
 import { prisma, getD1 } from "@/lib/db";
 import { readTaskRelations } from "./list-task-reader";
@@ -49,13 +50,14 @@ export async function createTask(input: {
     },
   });
 
+  await applyFieldDefaults(getD1(), input.listId, task.id);
   await prisma.activity.create({
     data: { taskId: task.id, userId: input.createdById, type: "created", data: {source:actorOrNull()?.channel??'web'} },
   });
 
   if(input.createdById && input.assigneeIds?.length)await createNotifications({recipientIds:input.assigneeIds,actorId:input.createdById,taskId:task.id,type:'assigned',body:'te asignó una tarea'});
   publish({ type: "list", listId: input.listId, clientId: actorOrNull()?.clientId });
-  return visibleTask(await readTaskRelations(getD1(),task.id));
+  return visibleTask(await taskRelationsForActor(task.id));
 }
 
 export type TaskPatch = {
@@ -129,6 +131,7 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
   // status change → set completedAt + log
   let becameDone = false;
   if (patch.statusId !== undefined && patch.statusId !== existing.statusId) {
+    await enforceRequiredFields(getD1(),existing.listId,taskId,actorOrNull()??undefined);
     data.statusId = patch.statusId;
     const newStatus = await prisma.status.findUnique({ where: { id: patch.statusId } });
     becameDone = newStatus?.type === "DONE";
@@ -204,7 +207,7 @@ export async function updateTask(taskId: string, patch: TaskPatch, actorId?: str
       body: "te asignó una tarea",
     });
   }
-  return visibleTask(await readTaskRelations(getD1(),task.id));
+  return visibleTask(await taskRelationsForActor(task.id));
 }
 
 type RecurringSource = {
@@ -260,3 +263,5 @@ async function spawnNextOccurrence(src: RecurringSource, actorId?: string) {
     },
   });
 }
+
+async function taskRelationsForActor(id:string){const task=await readTaskRelations(getD1(),id),a=actorOrNull();if(!a)return task;const fields=await prisma.customField.findMany({where:{id:{in:task.customFieldValues.map(v=>v.customFieldId)}}});return {...task,customFieldValues:decorateFieldValues(a,fields,task.customFieldValues,id)};}

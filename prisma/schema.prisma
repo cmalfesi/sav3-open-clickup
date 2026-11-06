@@ -328,6 +328,7 @@ enum CustomFieldType {
   PHONE
   RATING
   PROGRESS
+  FORMULA
 }
 
 model CustomField {

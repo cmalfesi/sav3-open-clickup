@@ -1,3 +1,4 @@
+import {canReadField,decorateFieldValues} from "./field-runtime";
 import { actor } from "./access-context";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma, getD1 } from "@/lib/db";
@@ -114,17 +115,18 @@ export async function getListData(listId: string) {
     orderBy: { position: "asc" }, include: { options: { orderBy: { position: "asc" } } },
   });
 
+  list.customFields=list.customFields.filter(f=>canReadField(a,f.config));
   const tasks = loaded.tasks.filter(t => {
     if (!a.access.can("TASK",t.id)) return false;
     return !t.parentId || !a.access.can("TASK",t.parentId);
-  }).map(visibleTask);
+  }).map(t=>visibleTask({...t,customFieldValues:decorateFieldValues(a,list.customFields,t.customFieldValues,t.id)}));
   list.views=list.views.filter(v=>v.type!=='DASHBOARD'||a.access.can('DASHBOARD',String((v.config as {dashboardId?:string}|null)?.dashboardId??'')));
   const taskViewCount = list.views.filter(v => v.type !== "DASHBOARD").length;
   const deletableViewIds = list.views.filter(v =>
     taskViewCount > (v.type === "DASHBOARD" ? 0 : 1) && canManageListView(a, v)
   ).map(v => v.id);
   const dependencies = loaded.dependencies;
-  return { list, tasks, deletableViewIds, dependencies:dependencies.filter(d=>a.access.can("TASK",d.blockerId)&&a.access.can("TASK",d.blockedId)) };
+  return { list, tasks, canCreateView:a.role!=="GUEST"&&a.access.can("LIST",listId,"EDIT"),manageableViewIds:list.views.filter(v=>canManageListView(a,v)).map(v=>v.id),deletableViewIds, dependencies:dependencies.filter(d=>a.access.can("TASK",d.blockerId)&&a.access.can("TASK",d.blockedId)) };
 }
 
 export type ListData = NonNullable<Awaited<ReturnType<typeof getListData>>>;
@@ -198,10 +200,14 @@ export async function getTaskDetail(taskId: string) {
     where: { id: { in: await effectiveFieldIds(getD1(), task.listId) } },
     orderBy: { position: "asc" }, include: { options: { orderBy: { position: "asc" } } },
   });
+  task.list.customFields=task.list.customFields.filter(f=>canReadField(a,f.config));
+  task.customFieldValues=decorateFieldValues(a,task.list.customFields,task.customFieldValues,task.id);
   task.subtasks=task.subtasks.filter(t=>a.access.can("TASK",t.id));
   task._count.subtasks=task.subtasks.length;
   task.blockedBy=task.blockedBy.filter(d=>a.access.can("TASK",d.blockerId));
   task.blocking=task.blocking.filter(d=>a.access.can("TASK",d.blockedId));
+  const visibleFieldIds=new Set(task.list.customFields.map(f=>f.id));
+  task.activities=task.activities.filter(x=>{const data=x.data as {fieldId?:string}|null;return !data?.fieldId||visibleFieldIds.has(data.fieldId)});
   // Imported activity payloads may contain cross-resource names.
   if(!a.access.admin) task.activities=task.activities.filter(x=>{const d=x.data as Record<string,unknown>|null;return ['web','mcp','api'].includes(String(d?.source));});
   return task;

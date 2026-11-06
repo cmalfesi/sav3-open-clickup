@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import { trashTasks } from "@/lib/trash-service";
+import { actor } from "@/lib/access-context";
+import { getD1, prisma } from "@/lib/db";
 import { updateTask } from "@/lib/tasks";
 import { getTaskDetail } from "@/lib/queries";
 import { requireRole } from "@/lib/permissions";
@@ -45,7 +47,7 @@ export const DELETE = route(async (_req, { params }: Ctx) => {
   const { taskId } = await params;
   await requireRole("MEMBER");
   const task = await prisma.task.findUnique({ where: { id: taskId }, select: { listId: true } });
-  await prisma.task.delete({ where: { id: taskId } });
+  await trashTasks(getD1(), actor(), [taskId]);
   if (task) publish({ type: "list", listId: task.listId });
   return NextResponse.json({ ok: true });
 });

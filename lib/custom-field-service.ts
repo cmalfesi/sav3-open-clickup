@@ -1,3 +1,4 @@
+import {canReadField,fieldSettings,evaluateFormula} from "./field-runtime";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { AccessError, type Actor } from "./access-context";
@@ -132,7 +133,7 @@ export async function fieldCatalog(
       const location = locations.find((p) => sameLocation(l, p));
       return location ? [location] : [];
     });
-    if (!shown.length) continue;
+    if (!shown.length || !canReadField(a,f.config)) continue;
     let description = "";
     try {
       description = JSON.parse(f.config ?? "{}")?.description ?? "";
@@ -143,11 +144,11 @@ export async function fieldCatalog(
       id: f.id,
       name: f.name,
       type: f.type,
-      description,
+      description, ...fieldSettings(f.config),
       revision: f.revision ?? 0,
       locations: shown,
       options: options.filter((o) => o.customFieldId === f.id),
-      canEdit: unique.every(
+      canEdit: (a.access.admin||!(fieldSettings(f.config).readerIds?.length||fieldSettings(f.config).editorIds?.length)) && unique.every(
         (l) =>
           !!locations.find((p) => sameLocation(l, p)) &&
           canManageFieldLocation(a, l),
@@ -232,7 +233,29 @@ export async function saveCustomField(
   } catch {
     /* Preserve other valid settings. */
   }
-  config.description = input.description;
+  if((input.adminOnly||previous?.adminOnly||input.readerIds?.length||input.editorIds?.length||previous?.readerIds?.length||previous?.editorIds?.length)&&!a.access.admin)throw new AccessError(403,'Solo administradores pueden gestionar campos privados.');
+  if(input.type==='FORMULA'&&input.required)throw new AccessError(400,'Una fórmula no puede ser un campo obligatorio editable.');
+  if(input.type==='FORMULA'){
+    if(!input.formula)throw new AccessError(400,'Ingresá una fórmula.');
+    const refs=[...input.formula.matchAll(/\{\{([^{}]+)\}\}/g)].map(m=>m[1]);
+    if(refs.some(ref=>ref===id||!catalog.fields.some(f=>f.id===ref&&['NUMBER','MONEY','RATING','PROGRESS'].includes(f.type)&&(!f.adminOnly||input.adminOnly))))throw new AccessError(400,'La fórmula debe usar campos numéricos disponibles y respetar su privacidad.');
+    for(const ref of refs){const field=catalog.fields.find(f=>f.id===ref)!;if(field.readerIds?.length&&!input.adminOnly&&(!input.readerIds?.length||input.readerIds.some(id=>!field.readerIds!.includes(id))))throw new AccessError(400,'La fórmula debe respetar los lectores de sus campos de origen.');}
+    evaluateFormula(input.formula,Object.fromEntries(refs.map(ref=>[ref,1])));
+  }
+  if(input.defaultValue!==undefined&&input.defaultValue!==null){
+    const v=input.defaultValue;
+    if(['NUMBER','MONEY','RATING','PROGRESS'].includes(input.type)&&(typeof v!=='number'||!Number.isFinite(v)))throw new AccessError(400,'El valor predeterminado debe ser numérico.');
+    if(input.type==='CHECKBOX'&&typeof v!=='boolean')throw new AccessError(400,'Valor predeterminado inválido.');
+    if(input.type==='RATING'&&(!Number.isInteger(v)||Number(v)<0||Number(v)>5)||input.type==='PROGRESS'&&(Number(v)<0||Number(v)>100))throw new AccessError(400,'Valor predeterminado fuera de rango.');
+    if(!['NUMBER','MONEY','RATING','PROGRESS','CHECKBOX','LABELS'].includes(input.type)&&(typeof v!=='string'||v.length>50000))throw new AccessError(400,'El valor predeterminado debe ser texto.');
+    if(input.type==='URL'&&!/^https?:\/\//i.test(String(v))||input.type==='EMAIL'&&!z.string().email().safeParse(v).success||input.type==='DATE'&&!Number.isFinite(Date.parse(String(v))))throw new AccessError(400,'Valor predeterminado inválido para el tipo de campo.');
+    if(input.type==='FORMULA')throw new AccessError(400,'Las fórmulas no admiten valor predeterminado.');
+    if(input.type==='DROPDOWN'&&!input.options.some(o=>o.id===v))throw new AccessError(400,'Guardá primero las opciones y luego elegí el valor predeterminado.');
+    if(input.type==='LABELS'&&(!Array.isArray(v)||v.some(id=>!input.options.some(o=>o.id===id))))throw new AccessError(400,'Valor predeterminado inválido.');
+  }
+  for(const userId of [...(input.readerIds??[]),...(input.editorIds??[])])if(!await db.prepare('SELECT id FROM User WHERE id=?').bind(userId).first())throw new AccessError(400,'Usuario de campo inválido.');
+  config.readerIds=input.readerIds??config.readerIds;config.editorIds=input.editorIds??config.editorIds;
+  config.description = input.description;config.required=input.required??config.required??false;config.adminOnly=input.adminOnly??config.adminOnly??false;if(input.formula!==undefined)config.formula=input.formula;if(input.defaultValue!==undefined)config.defaultValue=input.defaultValue;
   const guard =
     "EXISTS (SELECT 1 FROM CustomFieldRevision WHERE customFieldId=? AND writeKey=?)";
   const writes: D1PreparedStatement[] = [];
@@ -397,7 +420,7 @@ export async function customFieldRoute(
       throw new AccessError(405, "Método no permitido.");
     if (
       req.headers.get("Origin") !== new URL(req.url).origin &&
-      !(a.kind === "native" && !req.headers.get("Origin"))
+      !((a.kind === "native" || a.kind === "token") && !req.headers.get("Origin"))
     )
       throw new AccessError(403, "Origen no permitido.");
     if (a.tokenScope === "read") throw new AccessError(403, "Solo lectura.");
@@ -454,9 +477,12 @@ export async function saveCustomFieldValue(
   if (!task || !(await fieldApplies(db, fieldId, task.listId)))
     throw new AccessError(400, "El campo no está disponible en esta Lista.");
   const field = await db
-    .prepare("SELECT type FROM CustomField WHERE id=?")
+    .prepare("SELECT type,config FROM CustomField WHERE id=?")
     .bind(fieldId)
-    .first<{ type: string }>();
+    .first<{ type: string; config: string | null }>();
+  if(!canReadField(a,field?.config))throw new AccessError(403,"Campo privado.");
+  const editors=fieldSettings(field?.config).editorIds;if(editors?.length&&!a.access.admin&&!editors.includes(a.user.id))throw new AccessError(403,"Solo podés leer este campo.");
+  if(field?.type==="FORMULA")throw new AccessError(400,"Las fórmulas se calculan automáticamente.");
   const before = await db
     .prepare(
       "SELECT value FROM CustomFieldValue WHERE taskId=? AND customFieldId=?",
@@ -468,6 +494,7 @@ export async function saveCustomFieldValue(
     value === undefined ||
     value === "" ||
     (Array.isArray(value) && !value.length);
+  if(empty&&fieldSettings(field?.config).required)throw new AccessError(400,"Este campo es obligatorio.");
   if (!empty) {
     const type = field!.type;
     const number = ["NUMBER", "MONEY", "RATING", "PROGRESS"].includes(type);

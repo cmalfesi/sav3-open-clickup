@@ -320,3 +320,9 @@ body {
  .dashboard-icon-button { min-height: 36px; min-width: 32px; }
  .dashboard-toolbar-button { min-height: 32px; }
 }
+
+@media print {
+  aside, nav, .dashboard-toolbar, .dashboard-toolbar-button, [aria-label="Secciones de configuración"], .dashboard-card-actions { display: none !important; }
+  html,body,main,.dashboard-builder {height:auto!important;overflow:visible!important;background:white!important;color:#222!important;}
+  .dashboard-card {break-inside:avoid;box-shadow:none!important;}
+}

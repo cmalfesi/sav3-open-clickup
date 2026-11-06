@@ -21,6 +21,10 @@ export function CustomFieldControl({
   onChange: (value: unknown) => void;
   compact?: boolean;
 }) {
+  const {currentUser,authorization}=useWorkspace();
+  const config=field.config as {editorIds?:string[]}|null;
+  if(config?.editorIds?.length&&!['OWNER','ADMIN'].includes(authorization.role)&&!config.editorIds.includes(currentUser.id))return <span title="Campo de solo lectura">{Array.isArray(value)?value.map(v=>field.options.find(o=>o.id===v)?.label??String(v)).join(', '):field.options.find(o=>o.id===value)?.label??String(value??'—')}</span>;
+  if(field.type===CustomFieldType.FORMULA)return <span title="Calculado automáticamente">{value===null||value===undefined?"—":String(value)}</span>;
   // inline types (no popover)
   if (field.type === CustomFieldType.CHECKBOX) {
     return (

@@ -5,10 +5,11 @@ import { AlertDialog } from "radix-ui";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Ellipsis, Trash2 } from "lucide-react";
 
-export function DeleteViewMenu({ name, dashboard, onDelete }: {
+export function DeleteViewMenu({ name, dashboard, onDelete, onDuplicate, onRename, onSave }: {
   name: string;
   dashboard: boolean;
-  onDelete: () => Promise<void>;
+  onDelete?: () => Promise<void>;
+  onDuplicate?:()=>void;onRename?:()=>void;onSave?:()=>void;
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
   const openingConfirmation = useRef(false);
@@ -20,7 +21,7 @@ export function DeleteViewMenu({ name, dashboard, onDelete }: {
     setBusy(true);
     setError("");
     try {
-      await onDelete();
+      await onDelete?.();
       setConfirming(false);
     } catch (error) {
       setError((error as Error).message);
@@ -45,13 +46,16 @@ export function DeleteViewMenu({ name, dashboard, onDelete }: {
               openingConfirmation.current = false;
             }}
             className="z-50 rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg">
-            <DropdownMenu.Item onSelect={() => {
+            {onDuplicate&&<DropdownMenu.Item onSelect={()=>{openingConfirmation.current=true;onDuplicate();}} className="cursor-pointer rounded px-3 py-2 text-sm outline-none data-[highlighted]:bg-cu-hover">Duplicar vista</DropdownMenu.Item>}
+            {onRename&&<DropdownMenu.Item onSelect={()=>{openingConfirmation.current=true;onRename();}} className="cursor-pointer rounded px-3 py-2 text-sm outline-none data-[highlighted]:bg-cu-hover">Renombrar vista</DropdownMenu.Item>}
+            {onSave&&<DropdownMenu.Item onSelect={onSave} className="cursor-pointer rounded px-3 py-2 text-sm outline-none data-[highlighted]:bg-cu-hover">Guardar configuración como referencia compartida</DropdownMenu.Item>}
+            {onDelete&&<DropdownMenu.Item onSelect={() => {
               openingConfirmation.current = true;
               setError("");
               setConfirming(true);
             }} className="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm text-cu-urgent outline-none data-[highlighted]:bg-cu-hover">
               <Trash2 size={15} /> Eliminar vista
-            </DropdownMenu.Item>
+            </DropdownMenu.Item>}
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>

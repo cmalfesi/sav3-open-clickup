@@ -12,7 +12,6 @@ import {
   ChartNoAxesGantt,
   Table2,
   Plus,
-  Users,
   Ellipsis,
   Star,
   ClipboardList,
@@ -23,7 +22,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { TemplatePicker } from "@/components/views/template-picker";
 import { ViewTaskSearch } from "@/components/views/view-task-search";
 import { normalizeTaskSearch, searchTaskRows } from "@/lib/view-task-search";
-import { DeleteViewMenu } from "@/components/views/delete-view-menu";
+import { ManageViews } from "./manage-views";
 import type { ListData } from "@/lib/queries";
 import { useList, useCreateTask, useToggleFavorite } from "@/lib/hooks";
 import { useWorkspace } from "@/components/workspace-context";
@@ -56,7 +55,7 @@ const VIEW_ICON: Record<ViewType, React.ReactNode> = {
 export function ListPage({ listId }: { listId: string }) {const {currentUser}=useWorkspace();return <ListPageContent key={currentUser.id+':'+listId} listId={listId}/>;}
 function ListPageContent({ listId }: { listId: string }) {
   const qc=useQueryClient();
-  const [viewBusy,setViewBusy]=useState(false),[viewError,setViewError]=useState('');
+  const [viewError,setViewError]=useState(''),[viewNotice,setViewNotice]=useState('');
   const { data, isLoading, error } = useList(listId);
   const create = useCreateTask(listId);
   const { currentUser, favorites, authorization } = useWorkspace();
@@ -256,19 +255,15 @@ function ListPageContent({ listId }: { listId: string }) {
               {v.name}
             </button>
           ))}
-          <DropdownMenu.Root><DropdownMenu.Trigger asChild><button disabled={viewBusy} className="flex shrink-0 items-center gap-1 px-2 py-2 text-[13px] text-cu-text-tertiary hover:text-cu-text"><Plus className="h-4 w-4" /> Vista</button></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className="z-50 rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg"><DropdownMenu.Item className="cursor-pointer rounded p-3 text-sm outline-none hover:bg-cu-hover" onSelect={async()=>{setViewBusy(true);setViewError('');try{const created=await apiSend<{id:string;viewId:string}>('/api/dashboards','POST',{name:'Nuevo dashboard',sources:[listId],listId});await qc.invalidateQueries({queryKey:['list',listId]});setActiveViewId(created.viewId);personal.update({views:{},activeViewId:created.viewId});window.history.replaceState(null,'',pathname+'?view='+created.viewId);}catch(e){setViewError((e as Error).message);}finally{setViewBusy(false);}}}>Dashboard configurable</DropdownMenu.Item></DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root>
+          {data.canCreateView && <ManageViews listId={listId} canManage={!!activeView&&data.manageableViewIds.includes(activeView.id)} onDelete={activeView&&data.deletableViewIds.includes(activeView.id)?()=>removeView(activeView.id):undefined} current={activeView?{...activeView,state:vs}:undefined} onMessage={setViewNotice} onError={setViewError} onSelected={async id=>{await qc.invalidateQueries({queryKey:['list',listId]});selectView({id,config:{}});}}/>}
         </div>
 
         <div className="flex min-w-0 flex-wrap items-center gap-1 text-cu-text-secondary">
-          {activeView && data.deletableViewIds?.includes(activeView.id) && (
-            <DeleteViewMenu key={"options:" + activeView.id} name={activeView.name}
-              dashboard={activeView.type === "DASHBOARD"} onDelete={() => removeView(activeView.id)} />
-          )}
           <span role="status" className="mr-2 text-[11px] text-cu-text-tertiary">Vista personal · {personal.saving?"Guardando…":personal.saveError?"Guardado pendiente":"Guardado automático"}</span>
           {authorization.role !== 'GUEST' && <button type="button" onClick={() => openFieldManager({ location: { type: 'LIST', id: listId } })} className="rounded px-2 py-1.5 text-[13px] hover:bg-cu-hover">Campos personalizados</button>}
-          <ToolbarButton icon={<Users className="h-4 w-4" />} label="Assignee" />
-          <GroupMenu state={vs} onChange={updateVs} />
-          <FilterMenu state={vs} onChange={updateVs} tasks={data.tasks} />
+          <FilterMenu state={vs} onChange={updateVs} tasks={data.tasks} assigneeOnly />
+          <GroupMenu state={vs} onChange={updateVs} fields={data.list.customFields} />
+          <FilterMenu state={vs} onChange={updateVs} tasks={data.tasks} fields={data.list.customFields} statuses={data.list.statuses} />
           <SortMenu state={vs} onChange={updateVs} />
           {activeView && <ViewTaskSearch key={"search:" + activeView.id} value={searchText}
             onChange={text => setSearch({ viewId: activeView.id, text })} />}
@@ -281,6 +276,7 @@ function ListPageContent({ listId }: { listId: string }) {
         </div>
       </div>
 
+      {viewNotice&&<p role="status" className="px-4 py-2 text-sm text-cu-purple">{viewNotice}</p>}
       {viewError&&<p role="alert" className="px-4 py-2 text-sm text-red-600">{viewError}</p>}
       {personal.saveError&&<p role="status" className="flex items-center gap-2 px-4 py-2 text-xs text-cu-text-secondary">Guardado personal pendiente.<button className="text-cu-purple underline" onClick={personal.retry}>Reintentar</button></p>}
       <PersonalView key={activeView?.id} state={presentation} groupBy={vs.groupBy} update={patch=>{if(activeView)personal.update({views:{[activeView.id]:patch}});}}>
@@ -332,15 +328,6 @@ function ListPageContent({ listId }: { listId: string }) {
         />
       )}
     </div>
-  );
-}
-
-function ToolbarButton({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <button className="flex items-center gap-1.5 rounded px-2 py-1.5 text-[13px] hover:bg-cu-hover">
-      {icon}
-      <span className="hidden sm:inline">{label}</span>
-    </button>
   );
 }
 

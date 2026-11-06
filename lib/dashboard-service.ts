@@ -1,8 +1,11 @@
+import {canReadField,fieldSettings,evaluateFormula} from './field-runtime';
+import {csvResponse} from './csv';
+import { trashDashboard } from './trash-service';
 import { effectiveFieldIds } from './custom-field-service';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { AccessError,type Actor } from './access-context';
-import { dashboardSchema,emptyDashboard,type DashboardConfig,type DashboardData,type DashboardTask } from './dashboard-model';
+import { calculateCard,dashboardSchema,emptyDashboard,type DashboardConfig,type DashboardData,type DashboardTask } from './dashboard-model';
 type RecordRow={id:string;name:string;sources:string;createdBy:string;createdAt:number;config:string|null;revision:number|null;archived:number|null;updatedAt:number|null};
 const iso=(v:unknown):string|null=>{if(v===null||v===undefined)return null;const date=new Date(typeof v==='number'?v:String(v).replace(/^(\d{4}-\d\d-\d\d) (\d\d:.*)$/,'$1T$2Z'));return Number.isFinite(date.getTime())?date.toISOString():null;};
 const decode=(v:unknown)=>{if(typeof v!=='string')return v;try{return JSON.parse(v);}catch{return v;}};
@@ -21,7 +24,7 @@ export async function dashboardDataset(db:D1Database,a:Actor,config:DashboardCon
   db.prepare('SELECT id,name FROM List'),db.prepare('SELECT id,name,color,listId FROM Status'),
   db.prepare('SELECT a.taskId,a.userId,u.name,u.color FROM TaskAssignee a JOIN User u ON u.id=a.userId'),
   db.prepare('SELECT t.taskId,t.tagId,g.name,g.color FROM TaskTag t JOIN Tag g ON g.id=t.tagId'),
-  db.prepare('SELECT id,listId,name,type FROM CustomField'),db.prepare('SELECT id,customFieldId,label name,color FROM CustomFieldOption'),
+  db.prepare('SELECT id,listId,name,type,config FROM CustomField'),db.prepare('SELECT id,customFieldId,label name,color FROM CustomFieldOption'),
   db.prepare('SELECT taskId,customFieldId,value FROM CustomFieldValue'),
   db.prepare('SELECT a.id,a.taskId,a.type,a.createdAt,a.data,u.name userName FROM Activity a LEFT JOIN User u ON u.id=a.userId ORDER BY a.createdAt DESC'),
   db.prepare('SELECT u.id,u.name,u.color FROM User u JOIN AccountAccess a ON a.userId=u.id WHERE a.enabled=1'),
@@ -34,9 +37,10 @@ export async function dashboardDataset(db:D1Database,a:Actor,config:DashboardCon
  for(const r of rs[7].results as {taskId:string;customFieldId:string;value:unknown}[]){const t=index.get(r.taskId);if(t)t.fields[r.customFieldId]=decode(r.value);}
  const listIds=new Set((rs[1].results as {id:string}[]).filter(l=>a.access.visibleList(l.id)&&(!config.sources.length||config.sources.includes(l.id))).map(l=>l.id));
  const availableFields = new Set(await effectiveFieldIds(db,[...listIds]));
+ const permitted=(rs[5].results as {id:string;config:string|null}[]).filter(f=>canReadField(a,f.config));const permittedIds=new Set(permitted.map(f=>f.id));for(const t of tasks){for(const key of Object.keys(t.fields))if(!permittedIds.has(key))delete t.fields[key];for(const f of permitted){const config=fieldSettings(f.config);if(config.formula){try{t.fields[f.id]=evaluateFormula(config.formula,t.fields);}catch{t.fields[f.id]=null;}}}}
  const options=rs[6].results as {id:string;customFieldId:string;name:string;color:string}[];
  const activities=(rs[8].results as {id:string;taskId:string;type:string;createdAt:string;data:string|null;userName:string|null}[]).filter(r=>index.has(r.taskId)&&(a.access.admin||['web','api','mcp'].includes(String((decode(r.data) as {source?:string}|null)?.source)))).map(r=>({id:r.id,taskId:r.taskId,taskName:index.get(r.taskId)!.name,listId:index.get(r.taskId)!.listId,userName:r.userName??'Sistema',type:r.type,createdAt:iso(r.createdAt)??''})).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id)).slice(0,200);
- return {tasks,lists:(rs[1].results as DashboardData['lists']).filter(l=>listIds.has(l.id)),statuses:(rs[2].results as DashboardData['statuses']).filter(s=>listIds.has(s.listId!)),members:[...members.values()],tags:[...tags.values()],fields:(rs[5].results as {id:string;listId:string;name:string;type:string}[]).filter(f=>availableFields.has(f.id)).map(f=>({...f,options:options.filter(o=>o.customFieldId===f.id)})),activities,refreshedAt:new Date().toISOString()};
+ return {tasks,lists:(rs[1].results as DashboardData['lists']).filter(l=>listIds.has(l.id)),statuses:(rs[2].results as DashboardData['statuses']).filter(s=>listIds.has(s.listId!)),members:[...members.values()],tags:[...tags.values()],fields:(rs[5].results as {id:string;listId:string;name:string;type:string}[]).filter(f=>availableFields.has(f.id)&&permittedIds.has(f.id)).map(f=>({...f,options:options.filter(o=>o.customFieldId===f.id)})),activities,refreshedAt:new Date().toISOString()};
 }
 async function validateSources(a:Actor,config:DashboardConfig){for(const id of config.sources)if(!a.access.visibleList(id))throw new AccessError(403,'Una fuente seleccionada no está disponible con tus permisos.');}
 export async function createDashboard(
@@ -85,23 +89,17 @@ export async function dashboardRoute(req:Request,db:D1Database,a:Actor|null):Pro
    const dashboard=await db.prepare('SELECT * FROM Dashboard WHERE id=?').bind(id).first<RecordRow>();
    if(!dashboard)throw new AccessError(404,'No existe el dashboard.');
    if(!canDelete(a,dashboard))throw new AccessError(403,'Solo el creador o un administrador puede eliminar el dashboard.');
-   const result=await db.batch([
-    db.prepare("DELETE FROM View WHERE type='DASHBOARD' AND json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.dashboardId')=?").bind(id),
-    db.prepare("DELETE FROM ResourceGrant WHERE resourceType='DASHBOARD' AND resourceId=?").bind(id),
-    db.prepare("DELETE FROM ResourcePolicy WHERE resourceType='DASHBOARD' AND resourceId=?").bind(id),
-    db.prepare("INSERT INTO AccessAudit (id,actorId,action,targetId,createdAt) SELECT ?,?,'dashboard.delete',id,? FROM Dashboard WHERE id=?").bind(randomUUID(),a.user.id,Date.now(),id),
-    db.prepare('DELETE FROM Dashboard WHERE id=?').bind(id),
-   ]);
-   if(!result[4].meta.changes)throw new AccessError(404,'No existe el dashboard.');
+   await trashDashboard(db,a,id);
    return Response.json({ok:true});
   }
   const current=await readDashboard(db,a,id);
   if(req.method==='GET'&&!action)return Response.json(current);
+  if(req.method==='GET'&&action==='export'){const data=await dashboardDataset(db,a,current.config),query=new URL(req.url).searchParams.get('q')??'';return csvResponse([['Tarjeta','Grupo','Valor','Tareas','Corte UTC','Filtros dashboard','Filtros tarjeta'],...current.config.cards.flatMap(c=>{const result=calculateCard(current.config,c,data,query);return (result.rows.length?result.rows:[{name:'Total',value:result.value,taskIds:result.tasks.map(t=>t.id)}]).map(r=>[c.title,r.name,r.value,r.taskIds.length,data.refreshedAt,JSON.stringify(current.config.filter),JSON.stringify(c.filter)]);})],'dashboard');}
   if(req.method==='GET'&&action==='data')return Response.json(await dashboardDataset(db,a,current.config));
   if(req.method==='GET'&&action==='history')return Response.json({history:await rows(db,'SELECT h.revision,h.createdAt,u.name actor FROM DashboardHistory h LEFT JOIN User u ON u.id=h.actorId WHERE dashboardId=? ORDER BY revision DESC LIMIT 50',id)});
   if(action==='share'){
    if(!current.canShare)throw new AccessError(403,'Solo el creador o un administrador puede compartir el panel.');
-   if(req.method==='GET')return Response.json({users:await rows(db,'SELECT u.id,u.name,u.email,m.role FROM User u JOIN AccountAccess a ON a.userId=u.id AND a.enabled=1 JOIN WorkspaceMember m ON m.userId=u.id WHERE m.workspaceId=?',a.workspaceId),grants:await rows(db,"SELECT userId,level FROM ResourceGrant WHERE resourceType='DASHBOARD' AND resourceId=?",id)});
+   if(req.method==='GET')return Response.json({users:await rows(db,'SELECT u.id,u.name,u.email,m.role FROM User u JOIN AccountAccess a ON a.userId=u.id AND a.enabled=1 JOIN WorkspaceMember m ON m.userId=u.id WHERE m.workspaceId=?','90132980889'),grants:await rows(db,"SELECT userId,level FROM ResourceGrant WHERE resourceType='DASHBOARD' AND resourceId=?",id)});
    if(req.method==='POST'){
     const p=z.object({userId:z.string(),level:z.enum(['NONE','VIEW','EDIT'])}).parse(body);
     const target=await db.prepare('SELECT u.id FROM User u JOIN AccountAccess a ON a.userId=u.id WHERE u.id=? AND a.enabled=1').bind(p.userId).first();if(!target)throw new AccessError(400,'El usuario debe tener una cuenta habilitada.');

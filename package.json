@@ -1,6 +1,6 @@
 {
   "name": "sav3-open-clickup-lab",
-  "version": "0.11.1",
+  "version": "0.12.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -12,9 +12,10 @@
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
-    "test": "vitest run --exclude tests/tasks.integration.test.ts",
+    "test": "vitest run",
     "prisma:generate": "prisma generate",
-    "prepare:data": "node scripts/prepare-private-data.mjs"
+    "prepare:data": "node scripts/prepare-private-data.mjs",
+    "test:worker": "node --import tsx scripts/verify-worker.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

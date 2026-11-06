@@ -42,3 +42,15 @@ export async function deleteListView(db: D1Database, actor: Actor, id: string) {
     throw new AccessError(409, "La vista cambió o es la última vista de tareas de la lista. Actualizá la lista antes de reintentar.");
   }
 }
+
+export async function createListView(db:D1Database,a:Actor,input:{listId:string;name:string;type:string;config?:unknown;duplicateId?:string}){
+ if(a.role==='GUEST'||a.tokenScope==='read')throw new AccessError(403,'Solo lectura.');
+ a.access.assert('LIST',input.listId,'EDIT');
+ let config=input.config??{};
+ if(input.duplicateId){const source=await requireManageableListView(db,a,input.duplicateId);if(source.listId!==input.listId||source.type==='DASHBOARD')throw new AccessError(400,'Vista incompatible.');config=source.config?JSON.parse(String(source.config)):{};}
+ const id=randomUUID();
+ await db.batch([
+ db.prepare('INSERT INTO View(id,listId,name,type,config,position) VALUES(?,?,?,?,?,(SELECT coalesce(max(position),0)+1 FROM View WHERE listId=?))').bind(id,input.listId,input.name,input.type,JSON.stringify(config),input.listId),
+ db.prepare("INSERT INTO AccessAudit(id,actorId,action,targetId,createdAt) VALUES(?,?,'view.create',?,?)").bind(randomUUID(),a.user.id,id,Date.now())]);
+ return {id};
+}

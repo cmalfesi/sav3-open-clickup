@@ -26,7 +26,7 @@ import { Plus, MessageSquare, GitBranch, ChevronsLeftRight, ChevronsRightLeft, G
 import { cn, midpoint } from "@/lib/utils";
 import { apiSend } from "@/lib/api";
 import type { ListData, TaskWithRelations, StatusModel } from "@/lib/queries";
-import { useUpdateTask, useCreateTask } from "@/lib/hooks";
+import { useSetFieldValue, useUpdateTask, useCreateTask } from "@/lib/hooks";
 import { useWorkspace } from "@/components/workspace-context";
 import { groupTasks, type TaskGroup } from "@/lib/grouping";
 import type { GroupBy } from "@/lib/view-state";
@@ -56,9 +56,10 @@ export function BoardView({
   const { workspace } = useWorkspace();
   const members = useMemo(() => workspace.members.map((m) => m.user), [workspace.members]);
   const update = useUpdateTask(list.id);
+  const setField=useSetFieldValue(list.id);
 
   const groups = useMemo(
-    () => groupTasks(tasks, groupBy, { statuses, members }),
+    () => groupTasks(tasks, groupBy, { statuses, members, fields: list.customFields }),
     [tasks, groupBy, statuses, members],
   );
 
@@ -145,6 +146,7 @@ export function BoardView({
     } else if (groupBy === "assignee") {
       patch.assigneeIds = col === "unassigned" ? [] : [col];
     }
+    if(groupBy.startsWith('field:')){const fieldId=groupBy.slice(6),field=list.customFields.find(f=>f.id===fieldId),key=col.slice(('field:'+fieldId+':').length);if(field&&['DROPDOWN','TEXT','NUMBER','MONEY','CHECKBOX','DATE','URL','EMAIL','PHONE','RATING','PROGRESS'].includes(field.type)){const value=key==='__empty'?null:['NUMBER','MONEY','RATING','PROGRESS'].includes(field.type)?Number(key):field.type==='CHECKBOX'?key==='true':key;setField.mutate({taskId:activeId,fieldId,value});}else{setColumns(fromGroups(groups,sorting));return;}}
     update.mutate({ taskId: activeId, patch });
   }
 
