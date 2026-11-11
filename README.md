@@ -320,3 +320,9 @@ provider configuration, scheduling verification, recovery and limits.
 Login y Mi cuenta permiten mostrar/ocultar cada contraseña con el ojo; comienzan ocultas y el botón no envía el formulario. La recuperación incluye solicitud/reenvío por email, enlace de un uso con vigencia de 30 minutos, confirmación de contraseña, errores y regreso al login. Reset también ofrece el ojo y permite solicitar un enlace nuevo. Los tokens se retiran de la URL al abrir la página y no se guardan en el navegador.
 
 Para activar el envío en Sites, configurar como secreto `RESEND_API_KEY` y el remitente verificado `MAIL_FROM` en el entorno del sitio. Sin esta configuración, la solicitud informa que el correo no está disponible; no crea ni muestra un enlace de recuperación públicamente. Las pruebas del proveedor utilizan un mock, no verifican entrega real.
+
+## SAV3 0.12.2 · Adjuntos
+
+Los adjuntos raster JPG/JPEG, PNG, GIF y WebP muestran miniatura y se amplían en un diálogo con cierre por Escape y descarga del original. Los demás archivos se descargan con su nombre y extensión originales, sin conversión. Los controles de descarga permanecen visibles también con teclado y touch.
+
+La entrega autenticada `/api/files/{id}` reconoce las firmas de imagen, incluso si un adjunto previo fue guardado como `application/octet-stream`. También sirve los adjuntos importados de `/restored-files/` con los mismos permisos de tarea. `?download=1` fuerza la descarga con nombre UTF-8 y alternativa ASCII. La detección lee solo el principio del stream y conserva todos los bytes; no modifica adjuntos históricos. SVG/HTML no se visualizan inline.
