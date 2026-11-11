@@ -1,3 +1,4 @@
+import {presenceRoute} from '../lib/presence-service';
 import {workflowRoute} from "../lib/workflow-route";
 import {runScheduledWork} from "../lib/automation-service";
 import {operationalRoute} from "../lib/operational-route";
@@ -40,6 +41,7 @@ const worker = {
     const isMcp=url.pathname==='/mcp'||url.pathname==='/api/integrations/mcp';
     const actor=loaded?{...loaded,channel:(isMcp?'mcp':loaded.kind==='token'?'api':'web') as 'mcp'|'api'|'web'}:null;
     if(url.pathname==='/api/auth/capabilities')return privateResponse(Response.json({google:googleReady(env),email:mailReady(env)}));
+    const presence=await presenceRoute(request,env.DB,actor);if(presence)return privateResponse(presence);
     const recovery=await accountRecoveryRoute(request,env.DB,env);if(recovery)return privateResponse(recovery);
     const google=await googleRoute(request,env.DB,actor,env);if(google)return privateResponse(google);
     const reportSchedule=await reportScheduleRoute(request,env.DB,actor,env);if(reportSchedule)return privateResponse(reportSchedule);

@@ -78,6 +78,13 @@
       "when": 1793920694984,
       "tag": "0010_concerned_goliath",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1794407345937,
+      "tag": "0011_loud_kitty_pryde",
+      "breakpoints": true
     }
   ]
 }

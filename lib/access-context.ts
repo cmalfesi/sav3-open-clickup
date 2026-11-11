@@ -63,6 +63,7 @@ export type Actor = {
     tokenScope?: "read" | "write";
     channel?: "web" | "mcp" | "api";
     access: Access;
+    permissionRevision?: string;
     sessionId?: string;
     clientId?: string;
 };
