@@ -314,3 +314,9 @@ content search, bulk editing, richer templates, recoverable task/dashboard delet
 backups, audit, reminders, rules, stage history, exports and expanded API/MCP integration.
 See [the release and activation guide](docs/RELEASE-0.12.0.md) for exact behavior,
 provider configuration, scheduling verification, recovery and limits.
+
+## SAV3 0.12.1 · Acceso y recuperación
+
+Login y Mi cuenta permiten mostrar/ocultar cada contraseña con el ojo; comienzan ocultas y el botón no envía el formulario. La recuperación incluye solicitud/reenvío por email, enlace de un uso con vigencia de 30 minutos, confirmación de contraseña, errores y regreso al login. Reset también ofrece el ojo y permite solicitar un enlace nuevo. Los tokens se retiran de la URL al abrir la página y no se guardan en el navegador.
+
+Para activar el envío en Sites, configurar como secreto `RESEND_API_KEY` y el remitente verificado `MAIL_FROM` en el entorno del sitio. Sin esta configuración, la solicitud informa que el correo no está disponible; no crea ni muestra un enlace de recuperación públicamente. Las pruebas del proveedor utilizan un mock, no verifican entrega real.
