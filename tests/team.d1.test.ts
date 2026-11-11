@@ -111,6 +111,19 @@ describe('invited accounts on D1', () => {
       expect((await db.prepare('SELECT usedAt FROM PasswordRecovery WHERE userId=?').bind(target.user.id).first<{usedAt:number}>())!.usedAt).toBeGreaterThan(0);
       const audit=await db.prepare("SELECT actorId,targetId FROM AccessAudit WHERE action='user.password.reset'").first();expect(audit).toEqual({actorId:'owner',targetId:target.user.id});expect(JSON.stringify(audit)).not.toContain(password);
     });
+    it('applies grants and role changes to an existing session, but revokes it when the account is disabled',async()=>{
+      const invitation=await invite('live-access@example.com',[{resourceType:'TASK',resourceId:'t',level:'EDIT'}]);
+      const activated=await call('/api/auth/activate',{token:invitation.token,password:'Live-access-password-123',name:'Live member'},null);
+      const cookie=activated.headers.get('Set-Cookie')!.split(';')[0];
+      const request=()=>new Request(origin+'/home',{headers:{Cookie:cookie}});
+      const initial=(await loadActor(db,request()))!;expect(initial.access.can('TASK','t','EDIT')).toBe(true);
+      const body={userId:initial.user.id,enabled:true,role:'GUEST',scopeAll:false,grants:[{resourceType:'TASK',resourceId:'t',level:'VIEW'}]};
+      expect((await call('/api/team/users',body,owner,'PATCH')).status).toBe(200);
+      const limited=(await loadActor(db,request()))!;expect(limited).not.toBeNull();expect(limited.role).toBe('GUEST');expect(limited.access.can('TASK','t','EDIT')).toBe(false);expect(limited.access.can('TASK','t')).toBe(true);expect(limited.permissionRevision).not.toBe(initial.permissionRevision);
+      expect((await call('/api/team/users',{...body,role:'MEMBER',grants:[{resourceType:'LIST',resourceId:'l',level:'EDIT'}]},owner,'PATCH')).status).toBe(200);
+      const expanded=(await loadActor(db,request()))!;expect(expanded.access.can('TASK','hidden','EDIT')).toBe(true);
+      expect((await call('/api/team/users',{...body,enabled:false},owner,'PATCH')).status).toBe(200);expect(await loadActor(db,request())).toBeNull();
+    });
     it('protects owner and prevents administrators from promoting peers', async () => { expect((await call('/api/team/users', { userId: 'owner', enabled: false, role: 'MEMBER', scopeAll: false, grants: [] }, owner, 'PATCH')).status).toBe(403); const admin = { ...owner, role: 'ADMIN' as const, access: new Access('ADMIN', true, resources, []) }; expect((await call('/api/team/invitations', { email: 'escalate@example.com', role: 'ADMIN', scopeAll: true, grants: [] }, admin)).status).toBe(403); });
 });
 describe('inherited access boundaries', () => {

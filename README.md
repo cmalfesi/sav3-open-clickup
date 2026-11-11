@@ -332,3 +332,11 @@ La entrega autenticada `/api/files/{id}` reconoce las firmas de imagen, incluso 
 En Configuración → Usuarios, solo el propietario (superadmin / OWNER) puede usar **Generar contraseña** para una cuenta activa. Tras confirmar, se genera una clave aleatoria de 24 caracteres, se guarda solo su hash y se muestra una sola vez. Se revocan las sesiones, conexiones API, enlaces de recuperación e invitaciones pendientes de esa cuenta. No se modifican sus permisos ni se habilitan identidades importadas inactivas. La persona puede cambiarla desde Mi cuenta. No se impone un cambio obligatorio al ingresar.
 
 La recuperación por superadmin no requiere email. Para el autoservicio desde Login siguen siendo necesarios `RESEND_API_KEY` y un `MAIL_FROM` verificado en Sites; no son el correo/contraseña del usuario. No guardar claves de proveedor en el repositorio ni enviarlas por chat.
+
+## SAV3 0.12.4 · Permisos y usuarios conectados
+
+Editar permisos o el rol de una cuenta activa ya no cierra sus sesiones. La web revisa cambios cada 30 segundos y al recuperar foco: actualiza navegación y contenido; si hay borradores, espera a terminarlos antes de refrescar contenido. Si se pierde acceso al recurso abierto, limpia su caché y vuelve a Inicio con un aviso. Revocar la cuenta o restablecer su contraseña sigue invalidando sesiones. El servidor siempre comprueba los permisos actuales en cada solicitud.
+
+El propietario/superadmin tiene **Configuración → Usuarios conectados**, con estado, última señal y última actividad. Activo = pestaña visible con interacción en los últimos 2 minutos; inactivo = app abierta sin interacción reciente o en segundo plano; desconectado = sin señal por 90 segundos o sesión local inválida. Sin señal indica ausencia de registros recientes (versión no cargada o retención superada). La presencia es aproximada y no incluye API/MCP ni mide productividad. No se guardan URLs ni contenido escrito. La retención es de hasta 7 días y no se incluye en backups.
+
+Los usuarios con pestañas anteriores deben recargar una vez para empezar a enviar presencia y recibir cambios de permisos en la interfaz; la publicación no fuerza ese refresco ni los desconecta.

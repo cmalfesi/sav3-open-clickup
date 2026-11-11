@@ -1,4 +1,5 @@
 "use client";
+import {LiveAccessMonitor} from "@/components/live-access-monitor";
 
 import { useEffect, useState } from "react";
 import { useIsMutating } from "@tanstack/react-query";
@@ -74,6 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <WorkspaceProvider data={data}>
+      <LiveAccessMonitor revision={data.authorization.revision}/>
       <div className="flex h-full w-full overflow-hidden">
         {/* Desktop sidebar (collapsible) */}
         <div className="hidden md:flex">

@@ -25,5 +25,5 @@ export const GET = route(async () => {
     color: user.color,
     avatarUrl: user.avatarUrl,
   };
-  return NextResponse.json({ currentUser, workspace, authorization:{role:actor().role,admin:actor().access.admin}, favorites: favorites.filter(f=>actor().access.visibleList(f.listId)).map((f) => f.listId) });
+  return NextResponse.json({ currentUser, workspace, authorization:{role:actor().role,admin:actor().access.admin,revision:actor().permissionRevision}, favorites: favorites.filter(f=>actor().access.visibleList(f.listId)).map((f) => f.listId) });
 });

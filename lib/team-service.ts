@@ -95,15 +95,16 @@ export async function loadActor(db: D1Database, req: Request): Promise<Actor | n
     }
     // Fresh authorization snapshot in one round trip; never cache grants across requests.
     const accessRows = await db.batch([...graphStatements(db),
-        db.prepare('SELECT resourceType,resourceId,level FROM ResourceGrant WHERE userId=?').bind(user!.id),
-        db.prepare('SELECT resourceType,resourceId FROM ResourcePolicy WHERE restricted=1'),
+        db.prepare('SELECT resourceType,resourceId,level FROM ResourceGrant WHERE userId=? ORDER BY resourceType,resourceId').bind(user!.id),
+        db.prepare('SELECT resourceType,resourceId FROM ResourcePolicy WHERE restricted=1 ORDER BY resourceType,resourceId'),
+        db.prepare("SELECT id,json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.adminOnly') adminOnly,json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.readerIds') readers,json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.editorIds') editors FROM CustomField ORDER BY id"),
     ]);
     const resources = graphFromResults(accessRows);
     const grants = accessRows[4].results as Grant[];
     const policies = accessRows[5].results as {resourceType:string;resourceId:string}[];
     const safeUser = { id: user!.id, email: user!.email, name: user!.name, color: user!.color, avatarUrl: user!.avatarUrl };
     const clientId = req.headers.get("x-sav3-client") ?? "";
-    return { tokenScope, clientId: /^[a-f0-9-]{36}$/i.test(clientId) ? clientId : undefined, user: safeUser, role, workspaceId: WORKSPACE, kind, sessionId, access: new Access(role, scopeAll, resources, grants, policies.map(p => `${p.resourceType}:${p.resourceId}`)) };
+    return { permissionRevision:digest(JSON.stringify({role,scopeAll,grants,policies,fields:accessRows[6].results})), tokenScope, clientId: /^[a-f0-9-]{36}$/i.test(clientId) ? clientId : undefined, user: safeUser, role, workspaceId: WORKSPACE, kind, sessionId, access: new Access(role, scopeAll, resources, grants, policies.map(p => `${p.resourceType}:${p.resourceId}`)) };
 }
 async function audit(db: D1Database, a: Actor, action: string, target: string) { await db.prepare('INSERT INTO AccessAudit (id,actorId,action,targetId,createdAt) VALUES (?,?,?,?,?)').bind(randomUUID(), a.user.id, action, target, Date.now()).run(); }
 export async function throttle(db: D1Database, key: string, limit = 12) {
@@ -299,7 +300,8 @@ export async function teamRoute(req: Request, db: D1Database, a: Actor | null, m
                 throw new AccessError(400, "Invitá a esta persona para darle acceso.");
             if (target.role === 'OWNER' || (target.role === 'ADMIN' && a.role !== 'OWNER') || data.userId === a.user.id)
                 throw new AccessError(403, "No podés modificar esta cuenta.");
-            const writes = [db.prepare('UPDATE WorkspaceMember SET role=? WHERE userId=? AND workspaceId=?').bind(data.role, data.userId, WORKSPACE), db.prepare('UPDATE AccountAccess SET enabled=?,scopeAll=? WHERE userId=?').bind(data.enabled ? 1 : 0, data.scopeAll ? 1 : 0, data.userId), db.prepare('DELETE FROM ResourceGrant WHERE userId=?').bind(data.userId), db.prepare('DELETE FROM Session WHERE userId=?').bind(data.userId), db.prepare('UPDATE Invitation SET revoked=1 WHERE userId=? AND accepted IS NULL').bind(data.userId)];
+            const writes = [db.prepare('UPDATE WorkspaceMember SET role=? WHERE userId=? AND workspaceId=?').bind(data.role, data.userId, WORKSPACE), db.prepare('UPDATE AccountAccess SET enabled=?,scopeAll=? WHERE userId=?').bind(data.enabled ? 1 : 0, data.scopeAll ? 1 : 0, data.userId), db.prepare('DELETE FROM ResourceGrant WHERE userId=?').bind(data.userId), db.prepare('UPDATE Invitation SET revoked=1 WHERE userId=? AND accepted IS NULL').bind(data.userId)];
+            if(!data.enabled)writes.push(db.prepare('DELETE FROM Session WHERE userId=?').bind(data.userId));
             for (const g of data.grants)
                 writes.push(db.prepare('INSERT INTO ResourceGrant (userId,resourceType,resourceId,level) VALUES (?,?,?,?)').bind(data.userId, g.resourceType, g.resourceId, g.level));
             await db.batch(writes);

@@ -347,3 +347,13 @@ export const ReportScheduleTable=sqliteTable('ReportSchedule',{id:text('id').pri
 export const ReportDeliveryTable=sqliteTable('ReportDelivery',{id:text('id').primaryKey(),scheduleId:text('scheduleId').notNull().references(()=>ReportScheduleTable.id,{onDelete:'cascade'}),slot:text('slot').notNull(),status:text('status').notNull(),attempts:integer('attempts').notNull().default(0),updatedAt:integer('updatedAt').notNull()},t=>[uniqueIndex('ReportDelivery_schedule_slot').on(t.scheduleId,t.slot)]);
 export const TemplateMetadataTable=sqliteTable('TemplateMetadata',{templateId:text('templateId').primaryKey().references(()=>TaskTemplateTable.id,{onDelete:'cascade'}),config:text('config').notNull()});
 export const HierarchyTemplateTable=sqliteTable('HierarchyTemplate',{id:text('id').primaryKey(),workspaceId:text('workspaceId').notNull().references(()=>WorkspaceTable.id,{onDelete:'cascade'}),name:text('name').notNull(),kind:text('kind').notNull(),config:text('config').notNull(),createdBy:text('createdBy').notNull(),createdAt:integer('createdAt').notNull()});
+
+// Web-only presence, not task or audit content. Sessions are hashed references.
+export const UserPresenceTable=sqliteTable('UserPresence',{
+ userId:text('userId').notNull().references(()=>UserTable.id,{onDelete:'cascade'}),
+ clientId:text('clientId').notNull(),
+ sessionId:text('sessionId'),
+ lastSeen:integer('lastSeen').notNull(),
+ lastActive:integer('lastActive').notNull(),
+ visible:integer('visible').notNull().default(1),
+},t=>[primaryKey({columns:[t.userId,t.clientId]}),index('UserPresence_lastSeen_index').on(t.lastSeen)]);
