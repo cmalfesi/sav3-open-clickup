@@ -326,3 +326,9 @@ Para activar el envío en Sites, configurar como secreto `RESEND_API_KEY` y el r
 Los adjuntos raster JPG/JPEG, PNG, GIF y WebP muestran miniatura y se amplían en un diálogo con cierre por Escape y descarga del original. Los demás archivos se descargan con su nombre y extensión originales, sin conversión. Los controles de descarga permanecen visibles también con teclado y touch.
 
 La entrega autenticada `/api/files/{id}` reconoce las firmas de imagen, incluso si un adjunto previo fue guardado como `application/octet-stream`. También sirve los adjuntos importados de `/restored-files/` con los mismos permisos de tarea. `?download=1` fuerza la descarga con nombre UTF-8 y alternativa ASCII. La detección lee solo el principio del stream y conserva todos los bytes; no modifica adjuntos históricos. SVG/HTML no se visualizan inline.
+
+## SAV3 0.12.3 · Recuperación por superadmin
+
+En Configuración → Usuarios, solo el propietario (superadmin / OWNER) puede usar **Generar contraseña** para una cuenta activa. Tras confirmar, se genera una clave aleatoria de 24 caracteres, se guarda solo su hash y se muestra una sola vez. Se revocan las sesiones, conexiones API, enlaces de recuperación e invitaciones pendientes de esa cuenta. No se modifican sus permisos ni se habilitan identidades importadas inactivas. La persona puede cambiarla desde Mi cuenta. No se impone un cambio obligatorio al ingresar.
+
+La recuperación por superadmin no requiere email. Para el autoservicio desde Login siguen siendo necesarios `RESEND_API_KEY` y un `MAIL_FROM` verificado en Sites; no son el correo/contraseña del usuario. No guardar claves de proveedor en el repositorio ni enviarlas por chat.

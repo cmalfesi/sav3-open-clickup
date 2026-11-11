@@ -236,6 +236,24 @@ export async function teamRoute(req: Request, db: D1Database, a: Actor | null, m
             ]);
             return Response.json({ role: a.role, currentUserId: a.user.id, users, invitations, grants, policies, resources: await resourceGraph(db), now: Date.now() });
         }
+        if (path === '/api/team/users/reset-password') {
+            if(req.method!=='POST')throw new AccessError(405,'Solo POST.');
+            if(a.role!=='OWNER'||a.kind==='token')throw new AccessError(403,'Solo el propietario/superadmin puede generar contraseñas.');
+            const {userId}=validate(z.object({userId:z.string().min(1).max(200)}),body);
+            const target=await db.prepare('SELECT u.id FROM User u JOIN WorkspaceMember m ON m.userId=u.id AND m.workspaceId=? JOIN AccountAccess x ON x.userId=u.id AND x.enabled=1 WHERE u.id=?').bind(WORKSPACE,userId).first();
+            if(!target)throw new AccessError(404,'La cuenta no está activa en este espacio. Usá una invitación para habilitarla.');
+            await throttle(db,'admin-password:'+a.user.id,20);
+            const password=randomBytes(18).toString('base64url'),now=Date.now();
+            await db.batch([
+                db.prepare('UPDATE User SET passwordHash=? WHERE id=?').bind(hashPassword(password),userId),
+                db.prepare('DELETE FROM Session WHERE userId=?').bind(userId),
+                db.prepare('UPDATE IntegrationToken SET revoked=1 WHERE userId=?').bind(userId),
+                db.prepare('UPDATE PasswordRecovery SET usedAt=? WHERE userId=? AND usedAt IS NULL').bind(now,userId),
+                db.prepare('UPDATE Invitation SET revoked=1 WHERE userId=? AND accepted IS NULL').bind(userId),
+                db.prepare('INSERT INTO AccessAudit(id,actorId,action,targetId,createdAt) VALUES(?,?,?,?,?)').bind(randomUUID(),a.user.id,'user.password.reset',userId,now)
+            ]);
+            return Response.json({password},{headers:{'Cache-Control':'private, no-store'}});
+        }
         if (path === '/api/team/invitations' && req.method === 'POST') {
             const data = validate(accessSchema.extend({ email: z.string().trim().email().max(254) }), body);
             validateAccess(a, data);
