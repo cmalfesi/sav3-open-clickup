@@ -34,4 +34,11 @@ try{const db=await mf.getD1Database('DB');for(const f of readdirSync('drizzle').
  const imported=await mf.dispatchFetch('https://site.test/api/files/legacy',{headers:native});
  if(imported.status!==200||imported.headers.get('Content-Type')!=='image/gif'||!Buffer.from(await imported.arrayBuffer()).equals(Buffer.from(legacyImage)))throw new Error('Imported attachment delivery failed');
  console.log('Attachment upload, inline image, named download, exact bytes, imported assets and anonymous ACL passed');
+ await db.batch([db.prepare("INSERT INTO User(id,email,name) VALUES('recovery-user','recovery@example.test','Recovery test')"),db.prepare("INSERT INTO WorkspaceMember(id,workspaceId,userId,role) VALUES('recovery-member','90132980889','recovery-user','MEMBER')"),db.prepare("INSERT INTO AccountAccess(userId,enabled,scopeAll) VALUES('recovery-user',1,0)")]);
+ const reset=await mf.dispatchFetch('https://site.test/api/team/users/reset-password',{method:'POST',headers:{...native,'Content-Type':'application/json'},body:JSON.stringify({userId:'recovery-user'})});
+ if(reset.status!==200)throw new Error('Owner password reset failed '+reset.status);
+ const generated=await reset.json() as {password:string};
+ const logged=await mf.dispatchFetch('https://site.test/api/auth/login',{method:'POST',headers:{Origin:'https://site.test','Content-Type':'application/json'},body:JSON.stringify({email:'recovery@example.test',password:generated.password})});
+ if(logged.status!==200)throw new Error('Generated password login failed '+logged.status);
+ console.log('Owner-generated password accepted by compiled login');
  await call('/api/tasks/'+first.id,'DELETE');const tombstone=await db.prepare('SELECT entityId FROM TrashEntity WHERE entityId=?').bind(first.id).first();if(!tombstone)throw new Error('Trash missing');console.log('Compiled Worker smoke passed');}finally{await mf.dispose();}

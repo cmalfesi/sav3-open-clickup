@@ -85,6 +85,32 @@ describe('invited accounts on D1', () => {
     it('permits only one concurrent redemption and does not overwrite the winner', async () => { const inv = await invite('race@example.com'); const responses = await Promise.all(['First password 123!', 'Second password 123!'].map(password => call('/api/auth/activate', { token: inv.token, password, name: 'Race' }, null))); expect(responses.map(r => r.status).sort()).toEqual([200, 410]); });
     it('throttles login guessing without revealing whether an account exists', async () => { const statuses = []; for (let i = 0; i < 13; i++)
         statuses.push((await call('/api/auth/login', { email: 'missing@example.com', password: 'wrong' }, null)).status); expect(statuses.slice(0, 12)).toEqual(Array(12).fill(401)); expect(statuses[12]).toBe(429); });
+    it('lets only the owner generate a password, revokes credentials and preserves permissions',async()=>{
+      const invitation=await invite('reset-target@example.com');
+      const activated=await call('/api/auth/activate',{token:invitation.token,password:'Original-password-123',name:'Reset target'},null);
+      const cookie=activated.headers.get('Set-Cookie')!.split(';')[0];
+      const target=(await loadActor(db,new Request(origin+'/home',{headers:{Cookie:cookie}})))!;
+      const before=await db.prepare('SELECT enabled,scopeAll FROM AccountAccess WHERE userId=?').bind(target.user.id).first();
+      await db.prepare('INSERT INTO IntegrationToken(id,userId,name,tokenHash,scope,createdAt,expiresAt) VALUES(?,?,?,?,?,?,?)').bind('reset-api',target.user.id,'Test',digest('test-key'),'write',Date.now(),Date.now()+60000).run();
+      await db.prepare('INSERT INTO PasswordRecovery(tokenHash,userId,expiresAt) VALUES(?,?,?)').bind(digest('reset-link'),target.user.id,Date.now()+60000).run();
+      const body={userId:target.user.id};
+      expect((await call('/api/team/users/reset-password',body,null)).status).toBe(401);
+      expect((await call('/api/team/users/reset-password',body,target)).status).toBe(403);
+      const admin={...owner,role:'ADMIN' as const,access:new Access('ADMIN',true,resources,[])};
+      expect((await call('/api/team/users/reset-password',body,admin)).status).toBe(403);
+      expect((await call('/api/team/users/reset-password',body,{...owner,kind:'token'})).status).toBe(403);
+      const foreign=new Request(origin+'/api/team/users/reset-password',{method:'POST',headers:{Origin:'https://other.test','Content-Type':'application/json'},body:JSON.stringify(body)});
+      expect((await teamRoute(foreign,db,owner))!.status).toBe(403);
+      const reset=await call('/api/team/users/reset-password',body);expect(reset.status).toBe(200);
+      const {password}=await reset.json() as {password:string};expect(password.length).toBe(24);expect(reset.headers.get('Cache-Control')).toContain('no-store');
+      expect(await loadActor(db,new Request(origin+'/home',{headers:{Cookie:cookie}}))).toBeNull();
+      expect((await call('/api/auth/login',{email:'reset-target@example.com',password:'Original-password-123'},null)).status).toBe(401);
+      expect((await call('/api/auth/login',{email:'reset-target@example.com',password},null)).status).toBe(200);
+      expect(await db.prepare('SELECT enabled,scopeAll FROM AccountAccess WHERE userId=?').bind(target.user.id).first()).toEqual(before);
+      expect(await db.prepare("SELECT revoked FROM IntegrationToken WHERE id='reset-api'").first()).toEqual({revoked:1});
+      expect((await db.prepare('SELECT usedAt FROM PasswordRecovery WHERE userId=?').bind(target.user.id).first<{usedAt:number}>())!.usedAt).toBeGreaterThan(0);
+      const audit=await db.prepare("SELECT actorId,targetId FROM AccessAudit WHERE action='user.password.reset'").first();expect(audit).toEqual({actorId:'owner',targetId:target.user.id});expect(JSON.stringify(audit)).not.toContain(password);
+    });
     it('protects owner and prevents administrators from promoting peers', async () => { expect((await call('/api/team/users', { userId: 'owner', enabled: false, role: 'MEMBER', scopeAll: false, grants: [] }, owner, 'PATCH')).status).toBe(403); const admin = { ...owner, role: 'ADMIN' as const, access: new Access('ADMIN', true, resources, []) }; expect((await call('/api/team/invitations', { email: 'escalate@example.com', role: 'ADMIN', scopeAll: true, grants: [] }, admin)).status).toBe(403); });
 });
 describe('inherited access boundaries', () => {
