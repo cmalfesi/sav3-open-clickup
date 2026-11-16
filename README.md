@@ -340,3 +340,12 @@ Editar permisos o el rol de una cuenta activa ya no cierra sus sesiones. La web 
 El propietario/superadmin tiene **Configuración → Usuarios conectados**, con estado, última señal y última actividad. Activo = pestaña visible con interacción en los últimos 2 minutos; inactivo = app abierta sin interacción reciente o en segundo plano; desconectado = sin señal por 90 segundos o sesión local inválida. Sin señal indica ausencia de registros recientes (versión no cargada o retención superada). La presencia es aproximada y no incluye API/MCP ni mide productividad. No se guardan URLs ni contenido escrito. La retención es de hasta 7 días y no se incluye en backups.
 
 Los usuarios con pestañas anteriores deben recargar una vez para empezar a enviar presencia y recibir cambios de permisos en la interfaz; la publicación no fuerza ese refresco ni los desconecta.
+
+
+### Prepared release 0.12.5
+
+Task dialogs can delete nested subtasks to the recoverable trash and assign one responsible active member to each checklist item. Assigned members must already have access to the task; assignment does not change permissions. Inbox uses each member's assignment notification preference.
+
+Checklist rows update immediately with rollback on rejected changes, without a full task/list reload. New task, subtask, checklist item and comment inputs stay intact until accepted. Foreground JSON writes and React Query uploads show progress above dialogs, with error feedback; identical concurrent creates are coalesced within the browser. Existing users receive distinct saved avatar backgrounds, and newly invited users receive an unused color.
+
+See [release notes](docs/RELEASE-0.12.5.md) and [decision 0024](docs/decisions/0024-task-edit-feedback-and-checklists.md). Deployment is pending the requested prior notice. Managed preview cannot currently load styles/client scripts, so visual/mobile/keyboard QA remains pending.

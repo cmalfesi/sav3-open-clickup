@@ -14,6 +14,8 @@ vi.mock("@/lib/db", () => ({
   getD1: () => holder.db!,
   prisma: new Proxy({}, { get: (_target, key) => Reflect.get(holder.client!, key) }),
 }));
+import {addChecklistItem,updateChecklistItem,checklistAssignees} from "@/lib/checklists";
+import {availableUserColor} from "@/lib/user-colors";
 import { createTask, updateTask } from "@/lib/tasks";
 import { readTaskRelations } from "@/lib/list-task-reader";
 import { getListData,getTaskDetail,getWorkspaceTree,taskInclude } from "@/lib/queries";
@@ -68,6 +70,31 @@ afterAll(async () => {
 const nodes=[{id:"test-space",type:"SPACE" as const},{id:"test-list",type:"LIST" as const,parentId:"test-space",parentType:"SPACE" as const},...Array.from({length:130},(_,i)=>({id:`task-${i}`,type:"TASK" as const,listId:"test-list",parentId:"test-list",parentType:"LIST" as const})),{id:"private-sub",type:"TASK" as const,listId:"test-list",parentId:"task-0",parentType:"TASK" as const}];
 function member(grants:Grant[]):Actor {return {user:{id:"test",name:"Test",email:"test@example.com",color:"#000000",avatarUrl:null},role:"MEMBER",workspaceId:"test-workspace",kind:"local",access:new Access("MEMBER",false,nodes,grants)};}
 describe("large lists on D1", () => {
+  it("persists checklist assignees, requires active task access and supports unassignment",async()=>{
+    const db=holder.db!,p=holder.client!;
+    await db.batch([
+      db.prepare("INSERT INTO User(id,email,name) VALUES('cl-actor','actor@example.test','Actor'),('cl-no-access','none@example.test','No access'),('cl-disabled','disabled@example.test','Disabled')"),
+      db.prepare("INSERT INTO WorkspaceMember(id,workspaceId,userId,role) VALUES('cl-member','test-workspace','relation-user','MEMBER'),('cl-none','test-workspace','cl-no-access','MEMBER'),('cl-disabled','test-workspace','cl-disabled','MEMBER')"),
+      db.prepare("INSERT INTO AccountAccess(userId,enabled,scopeAll) VALUES('relation-user',1,1),('cl-no-access',1,0),('cl-disabled',0,1)"),
+    ]);
+    const a={...member([]),user:{id:'cl-actor',name:'Actor',email:'actor@example.test',color:'#000',avatarUrl:null},role:'OWNER' as const,access:new Access('OWNER',true,nodes,[])};
+    await withActor(a,async()=>{
+      const cl=await p.checklist.findFirstOrThrow({where:{taskId:'task-0'}});
+      const eligible=await checklistAssignees('task-0');expect(eligible.map(u=>u.id)).toEqual(['relation-user']);
+      for(const id of ['cl-no-access','cl-disabled','missing'])await expect(addChecklistItem(cl.id,{name:'No',assigneeId:id})).rejects.toMatchObject({status:400});
+      const saved=await addChecklistItem(cl.id,{name:'Assigned item',assigneeId:'relation-user'});expect(saved.assignee?.name).toBe('Relation User');
+      expect((await getTaskDetail('task-0'))?.checklists.find(c=>c.id===cl.id)?.items[0].assigneeId).toBe('relation-user');
+      const completed=await updateChecklistItem(saved.id,{resolved:true});expect(completed.resolved).toBe(true);expect(completed.assigneeId).toBe('relation-user');
+      expect((await updateChecklistItem(saved.id,{assigneeId:null})).assignee).toBeNull();
+      await expect(withActor(member([{resourceType:'TASK',resourceId:'task-0',level:'VIEW'}]),()=>updateChecklistItem(saved.id,{name:'Denied'}))).rejects.toMatchObject({status:403});
+      await p.checklistItem.delete({where:{id:saved.id}});
+    });
+  });
+  it("assigns distinct colors to pre-existing users without dropping attachment/checklist data",async()=>{
+    // Re-run just the one-time color migration against a populated isolated database.
+    const sql=readFileSync('drizzle/0012_fancy_microchip.sql','utf8').split('--> statement-breakpoint')[1];await holder.db!.prepare(sql).run();
+    const users=await holder.client!.user.findMany();expect(new Set(users.map(u=>u.color)).size).toBe(users.length);expect(users.map(u=>u.color)).not.toContain(availableUserColor(users.map(u=>u.color)));
+  });
   it("loads inherited fields through normal List and task detail queries", async () => {
     const a = { ...member([]), role: "OWNER" as const, access: new Access("OWNER", true, nodes, []) };
     const p = holder.client!;

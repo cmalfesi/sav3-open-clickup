@@ -27,6 +27,7 @@ model User {
 
   memberships   WorkspaceMember[]
   assignedTasks TaskAssignee[]
+  assignedChecklistItems ChecklistItem[]
   createdTasks  Task[]            @relation("TaskCreatedBy")
   comments      Comment[]
   activities    Activity[]
@@ -394,6 +395,8 @@ model ChecklistItem {
   resolved    Boolean @default(false)
   position    Float   @default(0)
 
+  assigneeId String?
+  assignee User? @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
   checklist Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
 
   @@index([checklistId])

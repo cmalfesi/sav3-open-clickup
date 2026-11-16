@@ -1,3 +1,4 @@
+import {nextUserColor} from "./user-colors";
 import {sendTransactionalMail,type MailEnvironment} from "./mail-service";
 import { dashboardRoute } from "./dashboard-service";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
@@ -82,7 +83,7 @@ export async function loadActor(db: D1Database, req: Request): Promise<Actor | n
         if (!user) {
             const userId = "site_" + id;
             await db.batch([
-                db.prepare('INSERT OR IGNORE INTO User (id,email,name,color) VALUES (?,?,?,?)').bind(userId, email, email, "#7b68ee"),
+                db.prepare('INSERT OR IGNORE INTO User (id,email,name,color) VALUES (?,?,?,?)').bind(userId, email, email, await nextUserColor(db)),
                 db.prepare("INSERT INTO WorkspaceMember (id,workspaceId,userId,role) VALUES (?,?,(SELECT id FROM User WHERE lower(email)=?),'OWNER') ON CONFLICT(workspaceId,userId) DO UPDATE SET role='OWNER'").bind(randomUUID(), WORKSPACE, email)
             ]);
             user = await db.prepare(`SELECT ${userColumns} FROM User u WHERE lower(email)=?`).bind(email).first<User>();
@@ -268,7 +269,7 @@ export async function teamRoute(req: Request, db: D1Database, a: Actor | null, m
                 throw new AccessError(409, "Esta cuenta ya tiene acceso. Modificala desde Usuarios. Para reactivar una cuenta, usá una nueva invitación.");
             const uid = existing?.id ?? randomUUID(), id = randomUUID(), raw = token(), expiresAt = Date.now() + 7 * 86400000;
             await db.batch([
-                db.prepare('INSERT OR IGNORE INTO User (id,email,name) VALUES (?,?,?)').bind(uid, email, email),
+                db.prepare('INSERT OR IGNORE INTO User (id,email,name,color) VALUES (?,?,?,?)').bind(uid, email, email, await nextUserColor(db)),
                 db.prepare('UPDATE Invitation SET revoked=1 WHERE userId=? AND accepted IS NULL').bind(uid),
                 db.prepare('INSERT INTO Invitation (id,tokenHash,userId,email,role,scopeAll,grants,expiresAt,createdAt,createdBy) VALUES (?,?,?,?,?,?,?,?,?,?)').bind(id, digest(raw), uid, email, data.role, data.scopeAll ? 1 : 0, JSON.stringify(data.grants), expiresAt, Date.now(), a.user.id)
             ]);

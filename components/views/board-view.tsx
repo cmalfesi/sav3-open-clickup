@@ -245,6 +245,8 @@ function Column({
         </span>
         {status && <WipEditor status={status} listId={listId} />}
         <button
+          disabled={create.isPending}
+          aria-label={create.isPending?"Creando tarea…":"Agregar tarea"}
           onClick={() =>
             create.mutate({
               listId,

@@ -57,7 +57,7 @@ export function Attachments({
   });
 
   function handleFiles(files: FileList | File[]) {
-    if (files.length) upload.mutate(files);
+    if (files.length && !upload.isPending) upload.mutate(files);
   }
 
   return (
@@ -76,7 +76,7 @@ export function Attachments({
       )}
 
       <div
-        onClick={() => inputRef.current?.click()}
+        onClick={() => !upload.isPending && inputRef.current?.click()}
         onDragOver={(e) => {
           e.preventDefault();
           setDragOver(true);
@@ -98,6 +98,7 @@ export function Attachments({
         <input
           ref={inputRef}
           type="file"
+          disabled={upload.isPending}
           multiple
           className="hidden"
           onChange={(e) => {

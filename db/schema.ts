@@ -197,6 +197,7 @@ export const ChecklistTable = sqliteTable("Checklist", {
 }, (t) => [index("Checklist_taskId_index").on(t.taskId)]);
 
 export const ChecklistItemTable = sqliteTable("ChecklistItem", {
+  assigneeId: text("assigneeId").references((): AnySQLiteColumn => UserTable.id, {onDelete: "set null"}),
   id: text("id").primaryKey(),
   checklistId: text("checklistId").notNull().references((): AnySQLiteColumn => ChecklistTable.id, {onDelete: "cascade"}),
   name: text("name").notNull(),

@@ -37,6 +37,7 @@ export function RichEditor({
   toolbar = true,
   autoFocus = false,
   mentions,
+  disabled = false,
 }: {
   content: string;
   onChange?: (html: string) => void;
@@ -46,6 +47,7 @@ export function RichEditor({
   toolbar?: boolean;
   autoFocus?: boolean;
   mentions?: MentionItem[];
+  disabled?: boolean;
 }) {
   // ref so the mention suggestion (created once) always reads the latest list;
   // synced in an effect — the suggestion only reads it when the user types "@".
@@ -82,6 +84,7 @@ export function RichEditor({
     ],
     content: preparedContent,
     immediatelyRender: false,
+    editable: !disabled,
     autofocus: autoFocus,
     editorProps: {
       attributes: { class: cn("rich min-h-[60px] px-3 py-2 outline-none", className) },
@@ -105,6 +108,8 @@ export function RichEditor({
     },
   });
 
+  useEffect(()=>{editor?.setEditable(!disabled);},[editor,disabled]);
+
   // keep external content in sync when switching tasks
   useEffect(() => {
     if (editor && !dirty.current) {
@@ -119,7 +124,7 @@ export function RichEditor({
 
   return (
     <div className="rounded-lg border border-cu-border focus-within:border-cu-purple">
-      {toolbar && <Toolbar editor={editor} />}
+      {toolbar && !disabled && <Toolbar editor={editor} />}
       <EditorContent editor={editor} />
     </div>
   );

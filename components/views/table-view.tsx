@@ -230,6 +230,8 @@ function TableGroup({
             </button>
           )}
           <button
+            disabled={create.isPending}
+            aria-label={create.isPending?"Creando tarea…":"Agregar tarea"}
             onClick={() =>
               create.mutate({
                 listId,

@@ -635,11 +635,13 @@ function AddTaskRow({
   const create = useCreateTask(listId);
   const [name, setName] = useState("");
 
-  function submit() {
-    const trimmed = name.trim();
-    if (!trimmed) { setOpen(false); return; }
-    create.mutate({ listId, name: trimmed, statusId, priority: defaults?.priority, assigneeIds: defaults?.assigneeIds });
-    setName("");
+  const lock=useRef(false);
+  async function submit() {
+    const trimmed=name.trim();
+    if(lock.current)return;
+    if(!trimmed){setOpen(false);return;}
+    lock.current=true;
+    try{await create.mutateAsync({listId,name:trimmed,statusId,priority:defaults?.priority,assigneeIds:defaults?.assigneeIds});setName(current=>current.trim()===trimmed?'':current);}catch{/* Keep the name. */}finally{lock.current=false;}
   }
 
   if (!open) {
@@ -659,11 +661,12 @@ function AddTaskRow({
         autoFocus
         value={name}
         onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter") submit(); if (e.key === "Escape") setOpen(false); }}
-        onBlur={submit}
+        onKeyDown={(e) => { if (e.key === "Enter"&&!e.nativeEvent.isComposing) {e.preventDefault();void submit();} if (e.key === "Escape"&&!create.isPending) setOpen(false); }}
+        onBlur={()=>{void submit();}}
         placeholder="Task name"
         className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-cu-text-tertiary"
       />
+      {create.isPending&&<span role="status" className="text-xs text-cu-text-tertiary">Guardando…</span>}
     </div>
   );
 }
