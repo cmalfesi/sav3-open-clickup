@@ -421,6 +421,11 @@ function TaskRow({
   const [savedExpansion, setExpanded] = useTaskExpanded(task.id);
   const expanded = searching || savedExpansion;
   const [renaming, setRenaming] = useState(false);
+  const [addingSubtask,setAddingSubtask]=useState(false);
+  const {authorization}=useWorkspace();
+  // Align the child status-circle center with the start of its parent's title.
+  // The optional drag-handle slot adds 14px (12px width - 4px margin + 6px gap).
+  const childIndent=handle?72:58;
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setField = useSetFieldValue(task.listId);
   const del = useDeleteTask(task.listId);
@@ -559,6 +564,7 @@ function TaskRow({
               <DropdownMenu.Content sideOffset={4} align="end" className="z-50 min-w-[150px] rounded-lg border border-cu-border bg-cu-panel p-1 shadow-lg">
                 <RowMenuItem icon={<Maximize2 className="h-4 w-4" />} label="Open" onSelect={() => onOpenTask(task.id)} />
                 <RowMenuItem icon={<Pencil className="h-4 w-4" />} label="Rename" onSelect={() => setRenaming(true)} />
+                {authorization.role!=="GUEST"&&<RowMenuItem icon={<Plus className="h-4 w-4" />} label="Add Subtask" onSelect={()=>{setExpanded(true);setAddingSubtask(true);}}/>}
                 <RowMenuItem icon={<Copy className="h-4 w-4" />} label="Duplicate" onSelect={() => duplicate.mutate(task.id)} />
                 <RowMenuItem icon={<Trash2 className="h-4 w-4" />} label="Delete" danger onSelect={() => del.mutate(task.id)} />
               </DropdownMenu.Content>
@@ -575,7 +581,7 @@ function TaskRow({
             style={gridStyle}
             onClick={() => onOpenTask(sub.id)}
           >
-            <div className="flex items-center gap-1.5 py-2 pl-8">
+            <div className="flex min-w-0 items-center gap-1.5 py-2" style={{paddingLeft:childIndent}}>
               <StatusCircle status={sub.status} />
               <span className="truncate text-[13px] text-cu-text">{sub.name}</span>
             </div>
@@ -590,6 +596,10 @@ function TaskRow({
             <div />
           </div>
         ))}
+      {expanded&&(hasSubtasks||savedExpansion||addingSubtask)&&authorization.role!=="GUEST"&&(
+        <AddTaskRow listId={task.listId} statusId={task.statusId} parentId={task.id}
+          open={addingSubtask} setOpen={setAddingSubtask} indent={childIndent+12}/>
+      )}
     </>
   );
 }
@@ -625,9 +635,13 @@ function AddTaskRow({
   defaults,
   open,
   setOpen,
+  parentId,
+  indent,
 }: {
   listId: string;
   statusId: string | undefined;
+  parentId?:string;
+  indent?:number;
   defaults?: { priority?: string; assigneeIds?: string[] };
   open: boolean;
   setOpen: (v: boolean) => void;
@@ -641,30 +655,36 @@ function AddTaskRow({
     if(lock.current)return;
     if(!trimmed){setOpen(false);return;}
     lock.current=true;
-    try{await create.mutateAsync({listId,name:trimmed,statusId,priority:defaults?.priority,assigneeIds:defaults?.assigneeIds});setName(current=>current.trim()===trimmed?'':current);}catch{/* Keep the name. */}finally{lock.current=false;}
+    try{await create.mutateAsync({listId,name:trimmed,statusId,parentId,priority:defaults?.priority,assigneeIds:defaults?.assigneeIds});setName(current=>current.trim()===trimmed?'':current);}catch{/* Keep the name. */}finally{lock.current=false;}
   }
 
   if (!open) {
     return (
       <button
+        type="button"
+        aria-label={parentId?"Add Subtask":"Add Task"}
         onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-1.5 border-t border-cu-border/60 px-3 py-1.5 pl-[42px] text-[13px] text-cu-text-tertiary hover:bg-cu-hover/40 hover:text-cu-text-secondary"
+        style={indent===undefined?undefined:{paddingLeft:indent}}
+        className={cn("flex w-full items-center gap-1.5 border-t border-cu-border/60 px-3 py-1.5 pl-[42px] text-[13px] focus-visible:outline-2 focus-visible:outline-cu-purple",
+          parentId?"bg-cu-purple-light/40 font-medium text-cu-purple hover:bg-cu-purple-light":"text-cu-text-tertiary hover:bg-cu-hover/40 hover:text-cu-text-secondary")}
       >
-        <Plus className="h-3.5 w-3.5" /> Add Task
+        <Plus className="h-3.5 w-3.5" /> {parentId?"Add Subtask":"Add Task"}
       </button>
     );
   }
 
   return (
-    <div className="flex items-center gap-2 border-t border-cu-border/60 px-3 py-1.5 pl-[42px]">
+    <div style={indent===undefined?undefined:{paddingLeft:indent}} className={cn("flex items-center gap-2 border-t border-cu-border/60 px-3 py-1.5 pl-[42px]",parentId&&"bg-cu-purple-light/40")}>
+      {parentId&&<Plus aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-cu-purple"/>}
       <input
         autoFocus
         value={name}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter"&&!e.nativeEvent.isComposing) {e.preventDefault();void submit();} if (e.key === "Escape"&&!create.isPending) setOpen(false); }}
         onBlur={()=>{void submit();}}
-        placeholder="Task name"
-        className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-cu-text-tertiary"
+        placeholder={parentId?"Subtask name":"Task name"}
+        aria-label={parentId?"Nombre de la subtarea":"Nombre de la tarea"}
+        className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-cu-text-tertiary"
       />
       {create.isPending&&<span role="status" className="text-xs text-cu-text-tertiary">Guardando…</span>}
     </div>

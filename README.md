@@ -349,3 +349,11 @@ Task dialogs can delete nested subtasks to the recoverable trash and assign one 
 Checklist rows update immediately with rollback on rejected changes, without a full task/list reload. New task, subtask, checklist item and comment inputs stay intact until accepted. Foreground JSON writes and React Query uploads show progress above dialogs, with error feedback; identical concurrent creates are coalesced within the browser. Existing users receive distinct saved avatar backgrounds, and newly invited users receive an unused color.
 
 See [release notes](docs/RELEASE-0.12.5.md) and [decision 0024](docs/decisions/0024-task-edit-feedback-and-checklists.md). Deployment is pending the requested prior notice. Managed preview cannot currently load styles/client scripts, so visual/mobile/keyboard QA remains pending.
+
+### 0.12.6 — Parent task navigation
+
+Subtask cards show **Tarea padre: [nombre]** below the header. Activate it to open the parent in the same card, then repeat to move up through nested levels. The parent link is available even when its task falls outside a dashboard's filters. A directly shared child does not disclose the title of a parent the user cannot read. Root tasks have no parent link.
+
+See [decision 0025](docs/decisions/0025-parent-task-navigation.md). No schema or hierarchy data changes are required.
+
+In List view, subtasks have more indentation: their status icon aligns with the start of the parent task title. An expanded group ends with a purple **Add Subtask** action, distinct from the group's **Add Task**. New child tasks created here are linked to that parent and inherit its status. For a task without children, choose **Add Subtask** in the row menu.

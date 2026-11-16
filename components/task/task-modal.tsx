@@ -1,5 +1,6 @@
 "use client";
 
+import {ParentTaskLink} from "./parent-task-link";
 import {ReminderControl} from "./reminder-control";
 import {putSavedTask,subtaskDeleteOptions} from "@/lib/task-cache";
 import { useRef, useState } from "react";
@@ -55,7 +56,7 @@ export function TaskModal({
   taskId: string;
   listId: string;
   onClose: () => void;
-  onOpenTask?: (id: string) => void;
+  onOpenTask?: (id: string, listId?: string) => void;
 }) {
   const qc = useQueryClient();
   const { currentUser, workspace } = useWorkspace();
@@ -126,7 +127,9 @@ export function TaskModal({
                 </div>
               </div>
 
-              <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+              <ParentTaskLink parentId={task.parentId} parent={task.parent} onOpenTask={onOpenTask}/>
+
+              <div key={task.id} className="flex min-h-0 flex-1 flex-col md:flex-row">
                 {/* main */}
                 <div className="flex min-w-0 flex-1 flex-col overflow-y-auto p-4 md:p-6">
                   <TitleField
@@ -157,7 +160,7 @@ export function TaskModal({
                     </h3>
                     <div className="rounded-lg border border-cu-border">
                       {task.subtasks.map(sub=><div key={sub.id} className="flex items-center gap-1 border-b border-cu-border pr-1 last:border-0">
-                        <button type="button" onClick={()=>onOpenTask?.(sub.id)} disabled={!onOpenTask} className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left hover:bg-cu-hover disabled:cursor-default focus-visible:outline-2 focus-visible:outline-cu-purple">
+                        <button type="button" onClick={()=>onOpenTask?.(sub.id,task.listId)} disabled={!onOpenTask} className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left hover:bg-cu-hover disabled:cursor-default focus-visible:outline-2 focus-visible:outline-cu-purple">
                           <StatusCircle status={sub.status} size={14}/><span className="min-w-0 flex-1 truncate text-[13px]">{sub.name}</span>
                           <span className="ml-auto flex -space-x-1.5">{sub.assignees.map(a=><Avatar key={a.userId} user={a.user} size="sm" ring/>)}</span>
                         </button>
@@ -350,8 +353,8 @@ function SubtaskComposer({onSubmit}:{onSubmit:(name:string)=>Promise<unknown>}) 
  }
  return <form onSubmit={e=>{e.preventDefault();void submit();}} aria-busy={busy} className="flex items-center gap-2 px-3 py-2">
   <Plus className="h-4 w-4 shrink-0 text-cu-text-tertiary"/>
-  <input aria-label="Nueva subtarea" value={v} onChange={e=>setV(e.target.value)} placeholder="Agregar una subtarea" className="min-w-0 flex-1 rounded bg-transparent text-[13px] outline-none placeholder:text-cu-text-tertiary focus-visible:ring-2 focus-visible:ring-cu-purple"/>
-  {(v.trim()||busy)&&<button disabled={busy} className="flex items-center gap-1 rounded px-2 py-1 text-xs text-cu-purple hover:bg-cu-hover disabled:opacity-50">{busy?<><LoaderCircle className="h-3 w-3 animate-spin motion-reduce:animate-none"/>Guardando…</>:'Agregar'}</button>}
+  <input aria-label="Nueva subtarea" value={v} onChange={e=>setV(e.target.value)} placeholder="Add Subtask" className="min-w-0 flex-1 rounded bg-transparent text-[13px] outline-none placeholder:text-cu-text-tertiary focus-visible:ring-2 focus-visible:ring-cu-purple"/>
+  {(v.trim()||busy)&&<button disabled={busy} className="flex items-center gap-1 rounded px-2 py-1 text-xs text-cu-purple hover:bg-cu-hover disabled:opacity-50">{busy?<><LoaderCircle className="h-3 w-3 animate-spin motion-reduce:animate-none"/>Guardando…</>:'Add Subtask'}</button>}
  </form>;
 }
 

@@ -144,6 +144,7 @@ export async function getTaskDetail(taskId: string) {
     where: { id: taskId },
     include: {
       ...taskInclude,
+      parent: {select:{id:true,name:true,listId:true}},
       createdBy: { select: userSelect },
       watchers: { include: { user: { select: userSelect } } },
       attachments: { orderBy: { createdAt: "desc" } },
@@ -196,6 +197,8 @@ export async function getTaskDetail(taskId: string) {
     },
   });
   if (!task) return null;
+  // Sharing a child does not grant read access to its parent or disclose its title.
+  if(task.parent&&!a.access.can("TASK",task.parent.id))task.parent=null;
   task.list.customFields = await prisma.customField.findMany({
     where: { id: { in: await effectiveFieldIds(getD1(), task.listId) } },
     orderBy: { position: "asc" }, include: { options: { orderBy: { position: "asc" } } },

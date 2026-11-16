@@ -131,8 +131,16 @@ describe("large lists on D1", () => {
     const a=member([{resourceType:"TASK",resourceId:"task-0",level:"VIEW"},{resourceType:"TASK",resourceId:"private-sub",level:"NONE"}]);
     await withActor(a,async()=>{const list=await getListData("test-list");expect(list?.tasks.map(t=>t.id)).toEqual(["task-0"]);expect(list?.tasks[0].subtasks).toEqual([]);expect(list?.dependencies).toEqual([]);const task=await getTaskDetail("task-0");expect(task?.subtasks).toEqual([]);expect(task?.blocking).toEqual([]);expect(task?._count.subtasks).toBe(0);const tree=await getWorkspaceTree();expect(tree?.spaces[0].lists[0]._count.tasks).toBe(1);await expect(getTaskDetail("task-129")).rejects.toMatchObject({status:403});});
   });
+  it("returns the immediate parent for an authorized subtask and no parent for root tasks",async()=>{
+    const a={...member([]),role:'OWNER' as const,access:new Access('OWNER',true,nodes,[])};
+    await withActor(a,async()=>{
+      const child=await getTaskDetail('private-sub');
+      expect(child?.parent).toEqual({id:'task-0',name:'Task 0',listId:'test-list'});
+      expect((await getTaskDetail('task-0'))?.parent).toBeNull();
+    });
+  });
   it("makes a directly shared subtask discoverable without revealing its parent or siblings",async()=>{
-    await withActor(member([{resourceType:"TASK",resourceId:"private-sub",level:"VIEW"}]),async()=>{const list=await getListData("test-list");expect(list?.tasks.map(t=>t.id)).toEqual(["private-sub"]);expect(await getListData("other-list")).toBeNull();});
+    await withActor(member([{resourceType:"TASK",resourceId:"private-sub",level:"VIEW"}]),async()=>{const list=await getListData("test-list");expect(list?.tasks.map(t=>t.id)).toEqual(["private-sub"]);expect((await getTaskDetail("private-sub"))?.parent).toBeNull();expect(await getListData("other-list")).toBeNull();});
   });
   it("returns all 130 tasks, their relations and dependencies", async () => {
     const result = await withActor({user:{id:"test",name:"Test",email:"test@example.com",color:"#000000",avatarUrl:null},role:"OWNER",workspaceId:"test-workspace",kind:"native",access:new Access("OWNER",true,[{id:"test-list",type:"LIST"},...Array.from({length:130},(_,i)=>({id:`task-${i}`,type:"TASK" as const,listId:"test-list"}))],[])} satisfies Actor,()=>getListData("test-list"));
