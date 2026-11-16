@@ -2,7 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {AccessError,type Actor} from './access-context';
 export async function trashTasks(db:D1Database,a:Actor,ids:string[]){
  if(a.role==='GUEST'||a.tokenScope==='read')throw new AccessError(403,'Solo lectura.');
- const tasks=(await db.prepare(`WITH RECURSIVE subtree(id) AS (SELECT id FROM Task WHERE id IN(SELECT value FROM json_each(?)) UNION SELECT t.id FROM Task t JOIN subtree p ON t.parentId=p.id) SELECT t.id,t.name,t.listId,t.archived FROM Task t JOIN subtree s ON s.id=t.id`).bind(JSON.stringify(ids)).all<{id:string;name:string;listId:string;archived:number}>()).results;
+ const tasks=(await db.prepare(`WITH RECURSIVE subtree(id) AS (SELECT id FROM Task WHERE id IN(SELECT value FROM json_each(?)) UNION SELECT t.id FROM Task t JOIN subtree p ON t.parentId=p.id) SELECT t.id,t.name,t.listId,t.archived FROM Task t JOIN subtree s ON s.id=t.id WHERE NOT EXISTS(SELECT 1 FROM TrashEntity e WHERE e.kind='TASK' AND e.entityId=t.id)`).bind(JSON.stringify(ids)).all<{id:string;name:string;listId:string;archived:number}>()).results;
  if(!tasks.length)throw new AccessError(404,'No hay tareas para eliminar.');
  tasks.forEach(t=>a.access.assert('TASK',t.id,'EDIT'));
  const batchId=randomUUID(),now=Date.now(),writes:D1PreparedStatement[]=[];

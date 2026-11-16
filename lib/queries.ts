@@ -167,7 +167,7 @@ export async function getTaskDetail(taskId: string) {
       },
       checklists: {
         orderBy: { position: "asc" },
-        include: { items: { orderBy: { position: "asc" } } },
+        include: { items: { orderBy: { position: "asc" }, include: { assignee: {select:userSelect} } } },
       },
       comments: {
         orderBy: { createdAt: "asc" },

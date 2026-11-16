@@ -1,7 +1,8 @@
 "use client";
 
 import {ReminderControl} from "./reminder-control";
-import { useState } from "react";
+import {putSavedTask,subtaskDeleteOptions} from "@/lib/task-cache";
+import { useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -19,9 +20,10 @@ import {
   Trash2,
   Reply,
   Check,
+  LoaderCircle,
 } from "lucide-react";
 import { apiGet, apiSend } from "@/lib/api";
-import type { TaskDetail } from "@/lib/queries";
+import type { TaskWithRelations, TaskDetail } from "@/lib/queries";
 import type { TaskPatch } from "@/lib/tasks";
 import { Priority } from "@/lib/enums";
 import { useUpdateTask } from "@/lib/hooks";
@@ -60,7 +62,7 @@ export function TaskModal({
   const mentions = workspace.members.map((m) => ({ id: m.user.id, label: m.user.name }));
   const { data: task, isLoading } = useQuery({
     queryKey: ["task", taskId],
-    queryFn: () => apiGet<TaskDetail>(`/api/tasks/${taskId}`),
+    queryFn: ({signal}) => apiGet<TaskDetail>(`/api/tasks/${taskId}`,signal),
   });
 
   const invalidate = () => {
@@ -78,9 +80,11 @@ export function TaskModal({
 
   const addSubtask = useMutation({
     mutationFn: (name: string) =>
-      apiSend("/api/tasks", "POST", { listId, name, parentId: taskId }),
-    onSuccess: invalidate,
+      apiSend<TaskWithRelations>("/api/tasks", "POST", { listId, name, parentId: taskId }),
+    onSuccess: saved=>putSavedTask(qc,listId,saved),
   });
+
+  const deleteSubtask=useMutation(subtaskDeleteOptions(qc,listId,taskId));
 
   const setField = useMutation({
     mutationFn: (v: { fieldId: string; value: unknown }) =>
@@ -152,27 +156,18 @@ export function TaskModal({
                       )}
                     </h3>
                     <div className="rounded-lg border border-cu-border">
-                      {task.subtasks.map((sub) => (
-                        <button
-                          key={sub.id}
-                          onClick={() => onOpenTask?.(sub.id)}
-                          className="flex w-full items-center gap-2 border-b border-cu-border px-3 py-2 text-left last:border-0 hover:bg-cu-hover disabled:cursor-default"
-                          disabled={!onOpenTask}
-                        >
-                          <StatusCircle status={sub.status} size={14} />
-                          <span className="text-[13px]">{sub.name}</span>
-                          <div className="ml-auto flex -space-x-1.5">
-                            {sub.assignees.map((a) => (
-                              <Avatar key={a.userId} user={a.user} size="sm" ring />
-                            ))}
-                          </div>
+                      {task.subtasks.map(sub=><div key={sub.id} className="flex items-center gap-1 border-b border-cu-border pr-1 last:border-0">
+                        <button type="button" onClick={()=>onOpenTask?.(sub.id)} disabled={!onOpenTask} className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left hover:bg-cu-hover disabled:cursor-default focus-visible:outline-2 focus-visible:outline-cu-purple">
+                          <StatusCircle status={sub.status} size={14}/><span className="min-w-0 flex-1 truncate text-[13px]">{sub.name}</span>
+                          <span className="ml-auto flex -space-x-1.5">{sub.assignees.map(a=><Avatar key={a.userId} user={a.user} size="sm" ring/>)}</span>
                         </button>
-                      ))}
-                      <SubtaskComposer onSubmit={(name) => addSubtask.mutate(name)} />
+                        <button type="button" aria-label={`Eliminar subtarea ${sub.name}`} title="Eliminar subtarea" disabled={deleteSubtask.isPending} onClick={()=>deleteSubtask.mutate(sub.id)} className="rounded p-2 text-cu-text-tertiary hover:bg-cu-hover hover:text-cu-urgent disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-cu-purple"><Trash2 className="h-3.5 w-3.5"/></button>
+                      </div>)}
+                      <SubtaskComposer key={taskId} onSubmit={name=>addSubtask.mutateAsync(name)} />
                     </div>
                   </section>
 
-                  <Checklists taskId={taskId} checklists={task.checklists} onChange={invalidate} />
+                  <Checklists key={taskId} taskId={taskId} listId={listId} checklists={task.checklists} />
 
                   <Attachments taskId={taskId} attachments={task.attachments} onChange={invalidate} />
 
@@ -208,7 +203,7 @@ export function TaskModal({
                     <CommentComposer
                       user={currentUser}
                       mentions={mentions}
-                      onSubmit={(body) => addComment.mutate(body)}
+                      onSubmit={(body) => addComment.mutateAsync(body)}
                     />
                   </section>
                 </div>
@@ -347,25 +342,17 @@ function TitleField({ value, onSave }: { value: string; onSave: (v: string) => v
   );
 }
 
-function SubtaskComposer({ onSubmit }: { onSubmit: (name: string) => void }) {
-  const [v, setV] = useState("");
-  return (
-    <div className="flex items-center gap-2 px-3 py-2">
-      <Plus className="h-4 w-4 text-cu-text-tertiary" />
-      <input
-        value={v}
-        onChange={(e) => setV(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && v.trim()) {
-            onSubmit(v.trim());
-            setV("");
-          }
-        }}
-        placeholder="Add a subtask"
-        className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-cu-text-tertiary"
-      />
-    </div>
-  );
+function SubtaskComposer({onSubmit}:{onSubmit:(name:string)=>Promise<unknown>}) {
+ const [v,setV]=useState(''),[busy,setBusy]=useState(false),lock=useRef(false);
+ async function submit(){
+  const name=v.trim();if(!name||lock.current)return;lock.current=true;setBusy(true);
+  try{await onSubmit(name);setV(current=>current.trim()===name?'':current);}catch{/* Preserve the name for correction/retry. */}finally{lock.current=false;setBusy(false);}
+ }
+ return <form onSubmit={e=>{e.preventDefault();void submit();}} aria-busy={busy} className="flex items-center gap-2 px-3 py-2">
+  <Plus className="h-4 w-4 shrink-0 text-cu-text-tertiary"/>
+  <input aria-label="Nueva subtarea" value={v} onChange={e=>setV(e.target.value)} placeholder="Agregar una subtarea" className="min-w-0 flex-1 rounded bg-transparent text-[13px] outline-none placeholder:text-cu-text-tertiary focus-visible:ring-2 focus-visible:ring-cu-purple"/>
+  {(v.trim()||busy)&&<button disabled={busy} className="flex items-center gap-1 rounded px-2 py-1 text-xs text-cu-purple hover:bg-cu-hover disabled:opacity-50">{busy?<><LoaderCircle className="h-3 w-3 animate-spin motion-reduce:animate-none"/>Guardando…</>:'Agregar'}</button>}
+ </form>;
 }
 
 type ActivityRecord = TaskDetail["activities"][number];
@@ -681,29 +668,29 @@ function CommentComposer({
 }: {
   user: { name: string; color: string; avatarUrl: string | null };
   mentions: { id: string; label: string }[];
-  onSubmit: (body: string) => void;
+  onSubmit: (body: string) => Promise<unknown>;
 }) {
   const [html, setHtml] = useState("");
   const [resetKey, setResetKey] = useState(0);
   const empty = !html || html === "<p></p>";
-  function submit() {
-    if (empty) return;
-    onSubmit(html);
-    setHtml("");
-    setResetKey((k) => k + 1);
+  const [busy,setBusy]=useState(false),lock=useRef(false);
+  async function submit() {
+    if (empty||lock.current) return;
+    lock.current=true;setBusy(true);
+    try{await onSubmit(html);setHtml("");setResetKey(k=>k+1);}catch{/* Keep the rich-text draft. */}finally{lock.current=false;setBusy(false);}
   }
   return (
     <div className="mt-4 flex gap-2.5">
       <Avatar user={user} size="lg" />
       <div className="flex-1">
-        <RichEditor key={resetKey} content="" placeholder="Write a comment…" mentions={mentions} onChange={setHtml} />
+        <RichEditor disabled={busy} key={resetKey} content="" placeholder="Write a comment…" mentions={mentions} onChange={setHtml} />
         <div className="mt-1.5 flex justify-end">
           <button
             onClick={submit}
-            disabled={empty}
+            disabled={empty||busy}
             className="rounded bg-cu-purple px-3 py-1 text-[13px] font-medium text-white disabled:opacity-40 hover:bg-cu-purple-dark"
           >
-            Comment
+            {busy?"Guardando…":"Comentar"}
           </button>
         </div>
       </div>

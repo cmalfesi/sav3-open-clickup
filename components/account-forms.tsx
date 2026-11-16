@@ -1,12 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from 'react';
+import {apiSend} from "@/lib/api";
 import {PasswordField} from './password-field';
-export async function accountRequest<T = {
-    ok: boolean;
-}>(path: string, body: unknown, method = 'POST'): Promise<T> { const r = await fetch(path, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const data = await r.json() as T & {
-    error?: string;
-}; if (!r.ok)
-    throw new Error(data.error || 'No pudimos completar la operación.'); return data; }
+export function accountRequest<T = {ok:boolean}>(path:string,body:unknown,method:"POST"|"PATCH"|"PUT"|"DELETE"='POST'):Promise<T>{return apiSend<T>(path,method,body);}
 const field = 'mt-1 min-h-11 w-full rounded-md border border-cu-border bg-cu-panel px-3 text-cu-text focus:outline-2 focus:outline-cu-purple';
 export function LoginForm() { const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false); return <form onSubmit={async (e) => { e.preventDefault(); setBusy(true); setError(''); try {
     await accountRequest('/api/auth/login', { email, password });
@@ -44,4 +40,4 @@ catch (e) {
 }
 finally {
     setBusy(false);
-} }}><p className="text-sm text-cu-text-secondary">Para el primer cambio del propietario podés dejar vacía la contraseña actual. Si ya tenés una contraseña, ingresala.</p><PasswordField label="Contraseña actual" autoComplete="current-password" value={currentPassword} onChange={e => setCurrent(e.target.value)}/><PasswordField label="Nueva contraseña" required minLength={12} maxLength={128} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)}/><button disabled={busy} className="min-h-11 rounded bg-cu-purple px-5 text-white disabled:opacity-50">Guardar contraseña</button>{message && <p role="status" className="text-sm">{message}</p>}</form>; }
+} }}><p className="text-sm text-cu-text-secondary">Para el primer cambio del propietario podés dejar vacía la contraseña actual. Si ya tenés una contraseña, ingresala.</p><PasswordField label="Contraseña actual" autoComplete="current-password" value={currentPassword} onChange={e => setCurrent(e.target.value)}/><PasswordField label="Nueva contraseña" required minLength={12} maxLength={128} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)}/><button disabled={busy} className="min-h-11 rounded bg-cu-purple px-5 text-white disabled:opacity-50">{busy?"Guardando…":"Guardar contraseña"}</button>{message && <p role="status" className="text-sm">{message}</p>}</form>; }

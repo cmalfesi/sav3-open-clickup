@@ -11,17 +11,25 @@ export function AssigneeControl({
   onChange,
   size = "md",
   label = "Assignees",
+  single = false,
+  disabled = false,
+  members: availableMembers,
 }: {
   assignees: UserLite[];
   onChange: (userIds: string[]) => void;
   size?: "sm" | "md" | "lg";
   label?: string;
+  single?: boolean;
+  disabled?: boolean;
+  members?: UserLite[];
 }) {
   const { workspace } = useWorkspace();
-  const members = workspace.members.map((m) => m.user);
+  const members = availableMembers ?? workspace.members.map((m) => m.user);
   const selected = new Set(assignees.map((a) => a.id));
 
   function toggle(userId: string) {
+    if (disabled) return;
+    if (single) {onChange(selected.has(userId)?[]:[userId]);return;}
     const next = new Set(selected);
     if (next.has(userId)) next.delete(userId);
     else next.add(userId);
@@ -32,8 +40,11 @@ export function AssigneeControl({
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         <button
+          type="button"
+          disabled={disabled}
+          aria-label={label}
           onClick={(e) => e.stopPropagation()}
-          className="flex items-center rounded outline-none hover:opacity-90"
+          className="flex items-center rounded outline-none hover:opacity-90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-cu-purple"
           title={label}
         >
           {assignees.length ? (
@@ -53,11 +64,12 @@ export function AssigneeControl({
           <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-cu-text-tertiary">
             {label}
           </div>
+          {single && <DropdownMenu.Item disabled={disabled} onSelect={()=>onChange([])} className="cursor-pointer rounded px-2 py-1.5 text-[13px] outline-none focus:bg-cu-hover">Sin asignar</DropdownMenu.Item>}
           {members.map((u) => (
             <DropdownMenu.Item
               key={u.id}
               onSelect={(e) => {
-                e.preventDefault();
+                if (!single) e.preventDefault();
                 toggle(u.id);
               }}
               className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none hover:bg-cu-hover focus:bg-cu-hover"

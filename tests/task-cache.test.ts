@@ -1,7 +1,7 @@
 import { QueryClient, MutationObserver } from "@tanstack/react-query";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { apiGet, apiSend } from "@/lib/api";
-import { taskUpdateOptions, putSavedTask } from "@/lib/task-cache";
+import { taskUpdateOptions, putSavedTask, subtaskDeleteOptions } from "@/lib/task-cache";
 import type { ListData, TaskWithRelations, TaskDetail } from "@/lib/queries";
 vi.mock("@/lib/api",()=>({apiGet:vi.fn(),apiSend:vi.fn()}));
 
@@ -61,4 +61,24 @@ describe("task changes without a full list reload",()=>{
     expect(read().tasks[0].subtasks.map(t=>t.id)).toEqual(["sub"]);
     expect(read().tasks[0]._count.subtasks).toBe(1);
   });
+});
+
+describe('nested subtasks in a task dialog',()=>{
+ it('restores a nested child row if trash deletion is rejected',async()=>{
+  const {qc}=setup(),child={...task('nested'),parentId:'sub'};
+  qc.setQueryData(['task','sub'],{...task('sub'),parentId:'t',subtasks:[child],_count:{subtasks:1}} as unknown as TaskDetail);
+  const response=deferred<{ok:true}>();vi.mocked(apiSend).mockReturnValueOnce(response.promise);
+  const edit=new MutationObserver(qc,subtaskDeleteOptions(qc,'l','sub'));
+  const saved=edit.mutate('nested').catch(()=>{});
+  await vi.waitFor(()=>expect(qc.getQueryData<TaskDetail>(['task','sub'])?.subtasks).toEqual([]));
+  response.reject(new Error('Descendant access denied'));await saved;
+  expect(qc.getQueryData<TaskDetail>(['task','sub'])?.subtasks.map(s=>s.id)).toEqual(['nested']);
+  expect(qc.getQueryData<TaskDetail>(['task','sub'])?._count.subtasks).toBe(1);
+ });
+ it('updates the cached parent dialog when a nested child is created',()=>{
+  const {qc}=setup();
+  qc.setQueryData(['task','sub'],{...task('sub'),parentId:'t',subtasks:[]} as unknown as TaskDetail);
+  putSavedTask(qc,'l',{...task('nested'),parentId:'sub'});
+  expect(qc.getQueryData<TaskDetail>(['task','sub'])?.subtasks.map(s=>s.id)).toEqual(['nested']);
+ });
 });

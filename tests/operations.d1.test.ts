@@ -34,6 +34,17 @@ beforeAll(async()=>{mf=new Miniflare({modules:true,script:"export default {fetch
  db.prepare("INSERT INTO Task(id,listId,statusId,name,description,updatedAt,dueDate) VALUES('t','l','open','Opportunity','Unique description Áccent','2026-01-01T00:00:00Z','2026-01-02T00:00:00Z'),('child','l','open','Child','',CURRENT_TIMESTAMP,NULL),('hidden','private','private-st','Hidden task','private text',CURRENT_TIMESTAMP,NULL)"),db.prepare("UPDATE Task SET parentId='t' WHERE id='child'")]);},30000);
 afterAll(async()=>{vi.unstubAllGlobals();await mf?.dispose();});
 describe('completed operational workflows',()=>{
+ it('can trash a parent after a nested child was already trashed, keeping separate restore batches',async()=>{
+  await db.prepare("INSERT INTO Task(id,listId,statusId,name,parentId,updatedAt) VALUES('nested-root','l','open','Root',NULL,CURRENT_TIMESTAMP),('nested-child','l','open','Child','nested-root',CURRENT_TIMESTAMP)").run();
+  const child=await trashTasks(db,await actor(),['nested-child']);
+  const parent=await trashTasks(db,await actor(),['nested-root']);
+  expect(parent.count).toBe(1);expect(parent.batchId).not.toBe(child.batchId);
+  await restoreTrash(db,await actor(),parent.batchId);
+  expect((await resourceGraph(db)).some(r=>r.id==='nested-root')).toBe(true);
+  expect((await resourceGraph(db)).some(r=>r.id==='nested-child')).toBe(false);
+  await restoreTrash(db,await actor(),child.batchId);
+  await db.prepare("DELETE FROM Task WHERE id IN ('nested-child','nested-root')").run();
+ });
  it('supports formula arithmetic without code evaluation and preserves missing data',()=>{expect(evaluateFormula('{{amount}} * (0.5 + 1)',{amount:100})).toBe(150);expect(evaluateFormula('{{missing}} * 5',{})).toBeNull();expect(evaluateFormula('1/0',{})).toBeNull();expect(()=>evaluateFormula('globalThis.fetch(1)',{})).toThrow();});
  it('creates normal views, duplicates config and protects the last task view',async()=>{const a=await actor();const first=await createListView(db,a,{listId:'l',name:'Sales',type:'BOARD',config:{groupBy:'priority'}});const second=await createListView(db,a,{listId:'l',name:'Copy',type:'BOARD',duplicateId:first.id});expect(JSON.parse((await db.prepare('SELECT config FROM View WHERE id=?').bind(second.id).first<{config:string}>())!.config)).toMatchObject({groupBy:'priority'});await deleteListView(db,a,first.id);await expect(deleteListView(db,a,second.id)).rejects.toMatchObject({status:409});});
  it('finds description and custom content after ACL, including accents, without hidden-field leaks',async()=>{const a=await actor(),f=await saveCustomField(db,a,fieldSchema.parse({name:'Internal',type:'TEXT',adminOnly:true,locations:[{type:'LIST',id:'l'}]}));await saveCustomFieldValue(db,a,'t',f.id,'Confidential-value');expect((await searchWorkspace(db,await actor('MEMBER'),'accent')).tasks[0].id).toBe('t');expect((await searchWorkspace(db,await actor('MEMBER'),'private text')).tasks).toEqual([]);expect((await searchWorkspace(db,await actor('MEMBER'),'Confidential-value')).tasks).toEqual([]);expect((await searchWorkspace(db,a,'Confidential-value')).tasks).toHaveLength(1);});

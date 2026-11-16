@@ -35,6 +35,31 @@ try{const db=await mf.getD1Database('DB');for(const f of readdirSync('drizzle').
  if(imported.status!==200||imported.headers.get('Content-Type')!=='image/gif'||!Buffer.from(await imported.arrayBuffer()).equals(Buffer.from(legacyImage)))throw new Error('Imported attachment delivery failed');
  console.log('Attachment upload, inline image, named download, exact bytes, imported assets and anonymous ACL passed');
  await db.batch([db.prepare("INSERT INTO User(id,email,name) VALUES('recovery-user','recovery@example.test','Recovery test')"),db.prepare("INSERT INTO WorkspaceMember(id,workspaceId,userId,role) VALUES('recovery-member','90132980889','recovery-user','MEMBER')"),db.prepare("INSERT INTO AccountAccess(userId,enabled,scopeAll) VALUES('recovery-user',1,0)")]);
+ // Checklist assignment and nested child removal through the real compiled router.
+ async function web(path:string,method='GET',body?:unknown,expected=200){
+  const r=await mf.dispatchFetch('https://site.test'+path,{method,headers:{...native,'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
+  const data=await r.json();if(r.status!==expected)throw new Error(path+' '+r.status+' '+JSON.stringify(data));return data;
+ }
+ await db.prepare("INSERT INTO ResourceGrant(userId,resourceType,resourceId,level) VALUES('recovery-user','LIST','l','EDIT')").run();
+ const cl=await web('/api/tasks/'+first.id+'/checklists','POST',{},201) as {id:string};
+ const ci=await web('/api/checklists/'+cl.id+'/items','POST',{name:'Assigned checklist item',assigneeId:'recovery-user'},201) as {id:string;assignee:{id:string}};
+ if(ci.assignee?.id!=='recovery-user')throw new Error('Checklist assignee missing');
+ await web('/api/checklist-items/'+ci.id,'PATCH',{resolved:true});
+ const detail=await web('/api/tasks/'+first.id) as {checklists:{id:string;items:{id:string;assigneeId:string;resolved:boolean}[]}[]};
+ if(!detail.checklists.find(c=>c.id===cl.id)?.items.some(i=>i.id===ci.id&&i.assigneeId==='recovery-user'&&i.resolved))throw new Error('Checklist assignment not persisted');
+ if(!(await db.prepare("SELECT id FROM Notification WHERE userId='recovery-user' AND type='assigned'").first()))throw new Error('Checklist assignment notification missing');
+ await web('/api/checklist-items/'+ci.id,'PATCH',{assigneeId:null});
+ await web('/api/checklist-items/'+ci.id,'PATCH',{assigneeId:'missing'},400);
+ const nestedParent=await web('/api/tasks','POST',{listId:'l',name:'Subtask',parentId:first.id},201) as {id:string};
+ const nestedChild=await web('/api/tasks','POST',{listId:'l',name:'Nested child',parentId:nestedParent.id},201) as {id:string};
+ const parentDetail=await web('/api/tasks/'+nestedParent.id) as {subtasks:{id:string}[]};
+ if(!parentDetail.subtasks.some(t=>t.id===nestedChild.id))throw new Error('Nested child not shown');
+ await web('/api/tasks/'+nestedChild.id,'DELETE');
+ const parentAfter=await web('/api/tasks/'+nestedParent.id) as {subtasks:{id:string}[]};
+ if(parentAfter.subtasks.some(t=>t.id===nestedChild.id))throw new Error('Deleted child still visible');
+ if(!(await db.prepare('SELECT entityId FROM TrashEntity WHERE entityId=?').bind(nestedChild.id).first()))throw new Error('Nested child not recoverable');
+ const unauthed=await mf.dispatchFetch('https://site.test/api/checklist-items/'+ci.id,{method:'PATCH',headers:{Origin:'https://site.test','Content-Type':'application/json'},body:'{"resolved":false}'});if(unauthed.status!==401)throw new Error('Anonymous checklist write allowed');
+ console.log('Checklist assignment, notification, persistent state, anonymous ACL and nested subtask trash passed');
  const reset=await mf.dispatchFetch('https://site.test/api/team/users/reset-password',{method:'POST',headers:{...native,'Content-Type':'application/json'},body:JSON.stringify({userId:'recovery-user'})});
  if(reset.status!==200)throw new Error('Owner password reset failed '+reset.status);
  const generated=await reset.json() as {password:string};
@@ -50,6 +75,7 @@ try{const db=await mf.getD1Database('DB');for(const f of readdirSync('drizzle').
  const after=await ping();if(after.status!==200)throw new Error('Permission edit logged out user');const current=await after.json() as {revision:string};if(current.revision===initial.revision)throw new Error('Permission revision did not change');
  const overview=await mf.dispatchFetch('https://site.test/api/team/presence',{headers:native});if(overview.status!==200)throw new Error('Presence overview '+overview.status);const overviewBody=await overview.json() as {users:{id:string;state:string}[]};if(overviewBody.users.find(u=>u.id==='recovery-user')?.state!=='active')throw new Error('Active member absent');
  const privateOverview=await mf.dispatchFetch('https://site.test/api/team/presence',{headers:{Cookie:cookie}});if(privateOverview.status!==403)throw new Error('Presence overview exposed');
+ const guestChecklist=await mf.dispatchFetch('https://site.test/api/checklist-items/'+ci.id,{method:'PATCH',headers:{Cookie:cookie,Origin:'https://site.test','Content-Type':'application/json'},body:'{"resolved":false}'});if(guestChecklist.status!==403)throw new Error('Guest checklist write allowed');
  console.log('Same-session permission change, revision update and owner-only presence passed');
 
  await call('/api/tasks/'+first.id,'DELETE');const tombstone=await db.prepare('SELECT entityId FROM TrashEntity WHERE entityId=?').bind(first.id).first();if(!tombstone)throw new Error('Trash missing');console.log('Compiled Worker smoke passed');}finally{await mf.dispose();}

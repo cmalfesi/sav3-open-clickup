@@ -34,6 +34,13 @@ export function putSavedTask(qc: QueryClient, listId: string | undefined, task: 
     return {...old,tasks};
   });
   qc.setQueryData<TaskDetail>(["task",task.id], old => old ? {...old,...task} : old);
+  if(task.parentId)qc.setQueryData<TaskDetail>(["task",task.parentId],old=>{
+    if(!old)return old;
+    const subtasks=old.subtasks.filter(s=>s.id!==task.id);
+    if(!task.archived)subtasks.push(task);
+    subtasks.sort((a,b)=>a.position-b.position);
+    return {...old,subtasks,_count:{...old._count,subtasks:subtasks.length}};
+  });
 }
 
 function optimistic<T extends TaskWithRelations>(task: T, patch: TaskPatch, statuses: T["status"][]): T {
@@ -95,4 +102,29 @@ export function taskUpdateOptions(qc: QueryClient, listId: string | undefined) {
       void qc.invalidateQueries({queryKey:["my-tasks"]});
     },
   };
+}
+
+/** Child rows use the existing trash/delete endpoint, including descendant ACL checks. */
+export function subtaskDeleteOptions(qc:QueryClient,listId:string,parentId:string){
+ return {
+  mutationKey:['subtask-delete',parentId],
+  mutationFn:(id:string)=>apiSend<{ok:true}>(`/api/tasks/${id}`,'DELETE'),
+  onMutate:async(id:string)=>{
+   await Promise.all([qc.cancelQueries({queryKey:['task',parentId]}),qc.cancelQueries({queryKey:['list',listId]})]);
+   const previous=qc.getQueryData<TaskDetail>(['task',parentId])?.subtasks.find(s=>s.id===id);
+   qc.setQueryData<TaskDetail>(['task',parentId],old=>{if(!old)return old;const subtasks=old.subtasks.filter(s=>s.id!==id);return {...old,subtasks,_count:{...old._count,subtasks:subtasks.length}};});
+   return {previous};
+  },
+  onSuccess:(_result:{ok:true},id:string)=>{
+   qc.removeQueries({queryKey:['task',id]});
+   qc.setQueryData<ListData>(['list',listId],old=>old?{...old,tasks:old.tasks.filter(t=>t.id!==id).map(t=>{
+    const subtasks=t.subtasks.filter(s=>s.id!==id);return {...t,subtasks,_count:{...t._count,subtasks:subtasks.length}};
+   })}:old);
+   void qc.invalidateQueries({queryKey:['list',listId],refetchType:'none'});
+   void qc.invalidateQueries({queryKey:['task',parentId],refetchType:'none'});
+  },
+  onError:(_error:Error,_id:string,ctx:{previous:TaskDetail['subtasks'][number]|undefined}|undefined)=>{
+   if(ctx?.previous)qc.setQueryData<TaskDetail>(['task',parentId],old=>{if(!old)return old;const subtasks=[...old.subtasks.filter(s=>s.id!==ctx.previous!.id),ctx.previous!].sort((a,b)=>a.position-b.position);return {...old,subtasks,_count:{...old._count,subtasks:subtasks.length}};});
+  },
+ };
 }
