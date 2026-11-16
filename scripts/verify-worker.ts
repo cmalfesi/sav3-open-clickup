@@ -52,6 +52,10 @@ try{const db=await mf.getD1Database('DB');for(const f of readdirSync('drizzle').
  await web('/api/checklist-items/'+ci.id,'PATCH',{assigneeId:'missing'},400);
  const nestedParent=await web('/api/tasks','POST',{listId:'l',name:'Subtask',parentId:first.id},201) as {id:string};
  const nestedChild=await web('/api/tasks','POST',{listId:'l',name:'Nested child',parentId:nestedParent.id},201) as {id:string};
+ const childDetail=await web('/api/tasks/'+nestedChild.id) as {parent:{id:string;name:string;listId:string}|null};
+ if(childDetail.parent?.id!==nestedParent.id||childDetail.parent.name!=='Subtask'||childDetail.parent.listId!=='l')throw new Error('Nested parent navigation metadata missing');
+ const rootDetail=await web('/api/tasks/'+first.id) as {parent:unknown};if(rootDetail.parent!==null)throw new Error('Root task has a parent');
+ console.log('Nested subtask exposes its immediate parent; root task has no parent');
  const parentDetail=await web('/api/tasks/'+nestedParent.id) as {subtasks:{id:string}[]};
  if(!parentDetail.subtasks.some(t=>t.id===nestedChild.id))throw new Error('Nested child not shown');
  await web('/api/tasks/'+nestedChild.id,'DELETE');
