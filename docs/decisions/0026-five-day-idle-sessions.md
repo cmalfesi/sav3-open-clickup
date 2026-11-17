@@ -19,7 +19,7 @@ The client combines wall and monotonic elapsed time: sleep counts as idle time, 
 
 ## Renewal, concurrency and revocation
 
-Renewal updates only the matching existing `Session` row, with a future current expiry, enabled account and workspace membership. Its conditional UPDATE cannot reduce an already later expiry. It cannot recreate a logged-out/deleted session, renew a disabled account, renew another user's session, or act on a mismatched cookie. The random browser token is preserved so parallel tabs do not invalidate each other; each browser/device session is independent.
+Renewal updates only the matching existing `Session` row, with a future current expiry, enabled account and workspace membership. Its conditional UPDATE uses the maximum of the saved and incoming deadlines, so it cannot reduce an already later expiry. An eligible retry reissues the cookie even if its previous database renewal already completed; losing a response must not leave a legacy twelve-hour cookie unchanged. It cannot recreate a logged-out/deleted session, renew a disabled account, renew another user's session, or act on a mismatched cookie. The random browser token is preserved so parallel tabs do not invalidate each other; each browser/device session is independent.
 
 The response refreshes the HttpOnly, Secure-on-HTTPS, SameSite=Lax, Path=/ cookie as well as the database deadline. The cookie's Max-Age is five days from the renewal response, so it can survive the short reported idle interval beyond the server deadline. The server always rejects an expired row, even if a cookie is still present. Browser privacy settings or explicit cookie deletion can require earlier sign-in.
 

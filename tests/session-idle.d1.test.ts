@@ -48,9 +48,15 @@ describe('five days since last browser activity',()=>{
  });
  it('does not move the deadline on heartbeats without new input or on hidden/idle tabs',async()=>{
   now+=hour;vi.setSystemTime(now);await signal();const saved=await deadline();
-  now+=60000;vi.setSystemTime(now);expect((await signal({...input,idleMs:60000})).headers.has('Set-Cookie')).toBe(false);expect(await deadline()).toBe(saved);
+  now+=60000;vi.setSystemTime(now);expect((await signal({...input,idleMs:60000})).headers.get('Set-Cookie')).toContain(cookie+';');expect(await deadline()).toBe(saved);
   now+=60000;vi.setSystemTime(now);expect((await signal({...input,visible:false,idleMs:0})).headers.has('Set-Cookie')).toBe(false);expect(await deadline()).toBe(saved);
   now+=600000;vi.setSystemTime(now);expect((await signal({...input,idleMs:600001})).headers.has('Set-Cookie')).toBe(false);expect(await deadline()).toBe(saved);
+ });
+ it('reissues the cookie after a renewal response is lost without sliding the last activity again',async()=>{
+  now+=hour;vi.setSystemTime(now);await signal();const saved=await deadline();
+  // Simulate the browser not receiving that Set-Cookie response, then retrying.
+  now+=30000;vi.setSystemTime(now);const retried=await signal({...input,idleMs:30000});
+  expect(retried.headers.get('Set-Cookie')).toContain(cookie+';');expect(await deadline()).toBe(saved);
  });
  it('allows use beyond the initial five days when there was later activity, then expires exactly after five inactive days',async()=>{
   now=start+4*day;vi.setSystemTime(now);await signal();expect(await deadline()).toBe(start+9*day);
@@ -76,7 +82,7 @@ describe('five days since last browser activity',()=>{
  it('never shortens the deadline when an older signal arrives after a newer one',async()=>{
   const a=await actor();now+=hour;vi.setSystemTime(now);
   await renewSessionForActivity(db,request(),a,{...input,idleMs:0});const saved=await deadline();
-  expect(await renewSessionForActivity(db,request(),a,{...input,idleMs:30000})).toBeNull();expect(await deadline()).toBe(saved);
+  expect(await renewSessionForActivity(db,request(),a,{...input,idleMs:30000})).toContain(cookie+';');expect(await deadline()).toBe(saved);
  });
  it('requires same-origin authenticated local activity and rejects invalid signals without extending expiry',async()=>{
   const a=await actor(),saved=await deadline();now+=hour;vi.setSystemTime(now);

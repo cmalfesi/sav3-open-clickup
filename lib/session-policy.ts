@@ -23,11 +23,13 @@ export async function renewSessionForActivity(db:D1Database,req:Request,a:Actor,
  const raw=cookieToken(req);
  if(!raw||!/^[a-f0-9]{64}$/.test(raw)||createHash('sha256').update(raw).digest('hex')!==a.sessionId)return null;
  const deadline=new Date(now-input.idleMs+SESSION_IDLE_MS).toISOString();
- const renewed=await db.prepare(`UPDATE Session SET expiresAt=?
-  WHERE id=? AND userId=? AND expiresAt>? AND expiresAt<?
+ const renewed=await db.prepare(`UPDATE Session SET expiresAt=max(expiresAt,?)
+  WHERE id=? AND userId=? AND expiresAt>?
   AND EXISTS(SELECT 1 FROM AccountAccess WHERE userId=Session.userId AND enabled=1)
   AND EXISTS(SELECT 1 FROM WorkspaceMember WHERE userId=Session.userId AND workspaceId=?)
-  RETURNING expiresAt`).bind(deadline,a.sessionId,a.user.id,new Date(now).toISOString(),deadline,a.workspaceId).first<{expiresAt:string}>();
+  RETURNING expiresAt`).bind(deadline,a.sessionId,a.user.id,new Date(now).toISOString(),a.workspaceId).first<{expiresAt:string}>();
+ // Reissue on an eligible retry too: a previous response may have been lost
+ // after its database update. max() keeps the original activity deadline.
  // Persist the browser cookie as well as the server deadline. Server expiry is
  // authoritative; the cookie can outlive it by the reported short idle interval.
  return renewed?sessionCookie(req,raw):null;
