@@ -71,9 +71,21 @@ try{const db=await mf.getD1Database('DB');for(const f of readdirSync('drizzle').
  if(logged.status!==200)throw new Error('Generated password login failed '+logged.status);
  console.log('Owner-generated password accepted by compiled login');
  const cookie=logged.headers.get('Set-Cookie')!.split(';')[0];
+ // Exercise the same cookie and renewal header through the compiled Worker.
+ if(!logged.headers.get('Set-Cookie')?.includes('Max-Age=432000'))throw new Error('Login cookie does not last five days');
+ const browserSessionId=createHash('sha256').update(cookie.split('=')[1]).digest('hex');
+ const legacyDeadline=new Date(Date.now()+3600000).toISOString();
+ await db.prepare('UPDATE Session SET expiresAt=? WHERE id=?').bind(legacyDeadline,browserSessionId).run();
+ const idleSignal={clientId:'550e8400-e29b-41d4-a716-446655440002',visible:false,idleMs:0,resources:[]};
+ const idleResponse=await mf.dispatchFetch('https://site.test/api/presence',{method:'POST',headers:{Cookie:cookie,Origin:'https://site.test','Content-Type':'application/json'},body:JSON.stringify(idleSignal)});
+ if(idleResponse.status!==200||idleResponse.headers.has('Set-Cookie'))throw new Error('Hidden tab renewed session');
+ const unchanged=await db.prepare('SELECT expiresAt FROM Session WHERE id=?').bind(browserSessionId).first() as {expiresAt:string}|null;if(unchanged?.expiresAt!==legacyDeadline)throw new Error('Hidden tab changed expiry');
  const presenceBody={clientId:'550e8400-e29b-41d4-a716-446655440000',visible:true,idleMs:0,resources:[]};
  async function ping(){return mf.dispatchFetch('https://site.test/api/presence',{method:'POST',headers:{Cookie:cookie,Origin:'https://site.test','Content-Type':'application/json'},body:JSON.stringify(presenceBody)})}
  const before=await ping();if(before.status!==200)throw new Error('Presence '+before.status);const initial=await before.json() as {revision:string};
+ if(!before.headers.get('Set-Cookie')?.includes('Max-Age=432000'))throw new Error('Active presence failed to renew browser cookie');
+ const renewed=await db.prepare('SELECT expiresAt FROM Session WHERE id=?').bind(browserSessionId).first() as {expiresAt:string}|null;if(!renewed||Date.parse(renewed.expiresAt)<Date.now()+4.99*86400000)throw new Error('Session deadline was not renewed');
+ console.log('Five-day persistent login, idle exclusion and renewal headers through compiled Worker passed');
  const edit=await mf.dispatchFetch('https://site.test/api/team/users',{method:'PATCH',headers:{...native,'Content-Type':'application/json'},body:JSON.stringify({userId:'recovery-user',enabled:true,role:'GUEST',scopeAll:false,grants:[{resourceType:'LIST',resourceId:'l',level:'VIEW'}]})});
  if(edit.status!==200)throw new Error('Permission edit '+edit.status);
  const after=await ping();if(after.status!==200)throw new Error('Permission edit logged out user');const current=await after.json() as {revision:string};if(current.revision===initial.revision)throw new Error('Permission revision did not change');
@@ -81,5 +93,8 @@ try{const db=await mf.getD1Database('DB');for(const f of readdirSync('drizzle').
  const privateOverview=await mf.dispatchFetch('https://site.test/api/team/presence',{headers:{Cookie:cookie}});if(privateOverview.status!==403)throw new Error('Presence overview exposed');
  const guestChecklist=await mf.dispatchFetch('https://site.test/api/checklist-items/'+ci.id,{method:'PATCH',headers:{Cookie:cookie,Origin:'https://site.test','Content-Type':'application/json'},body:'{"resolved":false}'});if(guestChecklist.status!==403)throw new Error('Guest checklist write allowed');
  console.log('Same-session permission change, revision update and owner-only presence passed');
+ await db.prepare('UPDATE Session SET expiresAt=? WHERE id=?').bind(new Date(Date.now()-1000).toISOString(),browserSessionId).run();
+ const expiredPresence=await ping();if(expiredPresence.status!==401||expiredPresence.headers.has('Set-Cookie'))throw new Error('Expired session was revived');
+ console.log('Expired browser session rejected without renewal');
 
  await call('/api/tasks/'+first.id,'DELETE');const tombstone=await db.prepare('SELECT entityId FROM TrashEntity WHERE entityId=?').bind(first.id).first();if(!tombstone)throw new Error('Trash missing');console.log('Compiled Worker smoke passed');}finally{await mf.dispose();}

@@ -256,9 +256,11 @@ del backup, plantillas globales y MCP quedan reservados a administradores y
 propietario en esta versión. Cambios estructurales que afectarían tareas privadas
 requieren permiso de edición sobre esas tareas también.
 
-Las sesiones locales vencen a las doce horas; cambiar permisos o revocar acceso
-cierra las sesiones. Las cuentas nuevas se activan por invitación y sus permisos
-se validan en cada solicitud. El stream de cambios se renueva cada minuto.
+Las sesiones propias de la aplicación vencen tras cinco días sin actividad y se
+renuevan al usar una pestaña visible. Los sondeos automáticos y las pestañas en
+segundo plano no prolongan la sesión. Cambiar permisos conserva la sesión;
+deshabilitar la cuenta, cerrar sesión o restablecer la contraseña la revoca.
+Las cuentas nuevas se activan por invitación y los permisos se validan en cada solicitud.
 
 ## Colaboración y conexiones personales
 
@@ -357,3 +359,12 @@ Subtask cards show **Tarea padre: [nombre]** below the header. Activate it to op
 See [decision 0025](docs/decisions/0025-parent-task-navigation.md). No schema or hierarchy data changes are required.
 
 In List view, subtasks have more indentation: their status icon aligns with the start of the parent task title. An expanded group ends with a purple **Add Subtask** action, distinct from the group's **Add Task**. New child tasks created here are linked to that parent and inherit its status. For a task without children, choose **Add Subtask** in the row menu.
+
+
+### Preparada en rama: 0.12.7 — Sesión con cinco días de inactividad
+
+La cookie y la sesión del servidor tienen una ventana renovable de cinco días. Cada uso de la pestaña visible actualiza el vencimiento a cinco días desde la última actividad comunicada. Se detectan apertura de la app, selección/foco de la pestaña, teclado, puntero, touch y scroll; el cliente comunica la actividad mediante el heartbeat de hasta 30 segundos. La actividad de cualquier pestaña del mismo navegador renueva la sesión compartida. Otros dispositivos mantienen sus propias sesiones.
+
+Una pestaña abierta sin interacción, los sondeos en segundo plano y los clientes API/MCP no renuevan este plazo. El vencimiento del servidor es el control definitivo. Cerrar sesión, deshabilitar la cuenta o restablecer la contraseña siguen invalidando el acceso; no se reactivan sesiones vencidas o revocadas. Una sesión anterior de 12 horas que siga vigente puede adoptar el nuevo plazo con su siguiente señal activa; si ya venció, hay que ingresar otra vez. No cambia la sesión externa del propietario con ChatGPT ni los tokens de integración.
+
+La rama queda preparada, sin fusión en `main`, versión guardada en Sites ni despliegue a producción. Ver [ADR 0026](docs/decisions/0026-five-day-idle-sessions.md).

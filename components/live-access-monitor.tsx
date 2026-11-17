@@ -9,11 +9,15 @@ import {hasDrafts} from '@/lib/drafts';
 export function LiveAccessMonitor({revision}:{revision?:string}){
  const qc=useQueryClient(),router=useRouter(),path=usePathname(),params=useSearchParams();
  const baseline=useRef(revision),location=useRef({path,task:params.get('task')}),pending=useRef(false);
+ // Survives permission/revision effect restarts; a background render is not input.
+ const lastInput=useRef<number|null>(null);
  useEffect(()=>{location.current={path,task:params.get('task')}},[path,params]);
  useEffect(()=>{
-  let stopped=false,inFlight=false,lastInput=Date.now();const controller=new AbortController();
+  let stopped=false,inFlight=false;const controller=new AbortController();
   if(!baseline.current&&revision)baseline.current=revision;
-  const active=()=>{lastInput=Date.now()};
+  const active=()=>{lastInput.current=performance.now()};
+  if(lastInput.current===null&&!document.hidden)active();
+  const inputActivity=(event:Event)=>{if(event.isTrusted)active()};
   async function poll(){
    if(inFlight||stopped)return;inFlight=true;
    try{
@@ -23,7 +27,7 @@ export function LiveAccessMonitor({revision}:{revision?:string}){
     if(current.task)resources.push({type:'TASK',id:current.task});
     const dashboard=document.querySelector('[data-dashboard-id]')?.getAttribute('data-dashboard-id');
     if(dashboard)resources.push({type:'DASHBOARD',id:dashboard});
-    const r=await fetch('/api/presence',{method:'POST',signal:controller.signal,keepalive:document.hidden,headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:mutationSource(),visible:!document.hidden,idleMs:Math.min(86400000,Math.max(0,Date.now()-lastInput)),resources})});
+    const r=await fetch('/api/presence',{method:'POST',signal:controller.signal,keepalive:document.hidden,headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:mutationSource(),visible:!document.hidden,idleMs:lastInput.current===null?86400000:Math.min(86400000,Math.max(0,Math.floor(performance.now()-lastInput.current))),resources})});
     if(stopped)return;
     if(r.status===401){await qc.cancelQueries();qc.removeQueries();toast.info('Tu sesión terminó o se revocó el acceso. Iniciá sesión para continuar.');router.replace('/login');return;}
     if(!r.ok)return;
@@ -44,11 +48,11 @@ export function LiveAccessMonitor({revision}:{revision?:string}){
    finally{inFlight=false;}
   }
   const focus=()=>{active();void poll()};
-  const visibility=()=>{void poll()};
-  for(const event of ['pointerdown','keydown','touchstart','scroll'])window.addEventListener(event,active,{passive:true,capture:true});
+  const visibility=()=>{if(!document.hidden)active();void poll()};
+  for(const event of ['pointerdown','pointermove','keydown','touchstart','scroll'])window.addEventListener(event,inputActivity,{passive:true,capture:true});
   window.addEventListener('focus',focus);document.addEventListener('visibilitychange',visibility);
   void poll();const timer=setInterval(()=>void poll(),30000);
-  return ()=>{stopped=true;controller.abort();clearInterval(timer);for(const event of ['pointerdown','keydown','touchstart','scroll'])window.removeEventListener(event,active,true);window.removeEventListener('focus',focus);document.removeEventListener('visibilitychange',visibility)};
+  return ()=>{stopped=true;controller.abort();clearInterval(timer);for(const event of ['pointerdown','pointermove','keydown','touchstart','scroll'])window.removeEventListener(event,inputActivity,true);window.removeEventListener('focus',focus);document.removeEventListener('visibilitychange',visibility)};
  },[qc,router,revision]);
  return null;
 }
