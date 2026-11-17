@@ -5,17 +5,18 @@ import {useQueryClient} from '@tanstack/react-query';
 import {toast} from 'sonner';
 import {mutationSource} from '@/lib/api';
 import {hasDrafts} from '@/lib/drafts';
+import {activityIdleMs,type ActivityStamp} from '@/lib/activity-clock';
 
 export function LiveAccessMonitor({revision}:{revision?:string}){
  const qc=useQueryClient(),router=useRouter(),path=usePathname(),params=useSearchParams();
  const baseline=useRef(revision),location=useRef({path,task:params.get('task')}),pending=useRef(false);
  // Survives permission/revision effect restarts; a background render is not input.
- const lastInput=useRef<number|null>(null);
+ const lastInput=useRef<ActivityStamp|null>(null);
  useEffect(()=>{location.current={path,task:params.get('task')}},[path,params]);
  useEffect(()=>{
   let stopped=false,inFlight=false;const controller=new AbortController();
   if(!baseline.current&&revision)baseline.current=revision;
-  const active=()=>{lastInput.current=performance.now()};
+  const active=()=>{lastInput.current={wallMs:Date.now(),monotonicMs:performance.now()}};
   if(lastInput.current===null&&!document.hidden)active();
   const inputActivity=(event:Event)=>{if(event.isTrusted)active()};
   async function poll(){
@@ -27,7 +28,7 @@ export function LiveAccessMonitor({revision}:{revision?:string}){
     if(current.task)resources.push({type:'TASK',id:current.task});
     const dashboard=document.querySelector('[data-dashboard-id]')?.getAttribute('data-dashboard-id');
     if(dashboard)resources.push({type:'DASHBOARD',id:dashboard});
-    const r=await fetch('/api/presence',{method:'POST',signal:controller.signal,keepalive:document.hidden,headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:mutationSource(),visible:!document.hidden,idleMs:lastInput.current===null?86400000:Math.min(86400000,Math.max(0,Math.floor(performance.now()-lastInput.current))),resources})});
+    const r=await fetch('/api/presence',{method:'POST',signal:controller.signal,keepalive:document.hidden,headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:mutationSource(),visible:!document.hidden,idleMs:activityIdleMs(lastInput.current,Date.now(),performance.now()),resources})});
     if(stopped)return;
     if(r.status===401){await qc.cancelQueries();qc.removeQueries();toast.info('Tu sesión terminó o se revocó el acceso. Iniciá sesión para continuar.');router.replace('/login');return;}
     if(!r.ok)return;
