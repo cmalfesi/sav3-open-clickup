@@ -11,5 +11,17 @@ describe('durable user/list/view preferences',()=>{
  it('atomically merges different groups and allows explicitly reopening one',async()=>{await Promise.all([call('PATCH',{views:{v:{collapsedGroups:{'status:open':true}}}}),call('PATCH',{views:{v:{collapsedGroups:{'status:done':true}}}})]);await call('PATCH',{views:{v:{collapsedGroups:{'status:backlog':false}}}});const mine=await(await call()).json() as ListViewPreferences;expect(mine.views.v.collapsedGroups).toEqual({'status:backlog':false,'status:open':true,'status:done':true});});
  it('lets a guest keep personal presentation while leaving the shared View untouched',async()=>{expect((await call('PATCH',{views:{v:{collapsedGroups:{backlog:true}}},activeViewId:'board'},'guest')).status).toBe(200);expect((await db.prepare("SELECT config FROM View WHERE id='v'").first<{config:string}>())!.config).toBe('{}');});
  it('rejects anonymous, cross-list, ungranted list, injected user identities and cross-origin writes',async()=>{expect((await call('GET',undefined,'anonymous')).status).toBe(401);expect((await call('GET',undefined,'member','private')).status).toBe(403);expect((await call('PATCH',{views:{foreign:{}}})).status).toBe(403);expect((await call('PATCH',{views:{},activeViewId:'foreign'})).status).toBe(403);expect((await call('PATCH',{views:{},userId:'peer'})).status).toBe(400);expect((await call('PATCH',{views:{v:{}}},'member','l','https://evil.test')).status).toBe(403);});
+ it('persists widths independently per user and view, atomically merging individual column changes',async()=>{
+  await db.prepare("INSERT INTO View(id,listId,name,type,config) VALUES('table','l','Table','TABLE','{}')").run();
+  expect((await call('PATCH',{views:{v:{columnWidths:{name:450,'field:deal':240}},table:{columnWidths:{name:700}}}})).status).toBe(200);
+  await Promise.all([call('PATCH',{views:{v:{columnWidths:{name:500}}}}),call('PATCH',{views:{v:{columnWidths:{assignee:160}}}})]);
+  const mine=await(await call()).json() as ListViewPreferences;
+  expect(mine.views.v.columnWidths).toEqual({name:500,'field:deal':240,assignee:160});expect(mine.views.table.columnWidths).toEqual({name:700});expect(mine.views.v.expandedTasks!.parent).toBe(true);
+  expect((await(await call('GET',undefined,'peer')).json() as ListViewPreferences).views.v.columnWidths).toBeUndefined();
+  expect((await call('PATCH',{views:{v:{columnWidths:{name:1601}}}})).status).toBe(400);
+  expect((await call('PATCH',{views:{v:{columnWidths:{name:550}}}},'guest')).status).toBe(200);
+  expect((await(await call('GET',undefined,'guest')).json() as ListViewPreferences).views.v.columnWidths).toEqual({name:550});
+  expect((await db.prepare("SELECT config FROM View WHERE id='v'").first<{config:string}>())!.config).toBe('{}');
+ });
  it('removes saved view preferences when the underlying view is deleted',async()=>{await db.prepare("DELETE FROM View WHERE id='v'").run();expect(await db.prepare("SELECT count(*) n FROM UserViewPreference WHERE viewId='v'").first()).toEqual({n:0});expect((await db.prepare("SELECT activeViewId FROM UserListPreference WHERE userId='member' AND listId='l'").first<{activeViewId:string|null}>())!.activeViewId).toBeNull();});
 });

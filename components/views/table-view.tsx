@@ -16,6 +16,8 @@ import { DueDate } from "@/components/ui/primitives";
 import { openFieldManager } from "@/components/custom-fields/manager";
 import { CustomFieldCell } from "@/components/views/custom-field-cell";
 import { BulkBar } from "@/components/views/bulk-bar";
+import {taskColumns} from '@/lib/column-widths';
+import {ResizableColumnHeader,useTaskColumnLayout} from './resizable-columns';
 
 const PAGE_SIZE = 50;
 
@@ -49,29 +51,27 @@ export function TableView({
 
   const groups = useMemo(
     () => groupTasks(tasks, groupBy, { statuses, members, fields: list.customFields }),
-    [tasks, groupBy, statuses, members],
+    [tasks, groupBy, statuses, members, list.customFields],
   );
 
-  // grid template: name | status | assignee | priority | due | start | custom fields...
-  const cols = `minmax(260px,2fr) 150px 130px 100px 120px 120px ${customFields.map(() => "130px").join(" ")} 40px`;
+  const columns=taskColumns('TABLE',customFields);
+  const layout=useTaskColumnLayout(columns);
+  const cols=layout.template;
 
   return (
-    <div className="flex-1 overflow-auto">
-      <div className="inline-block min-w-full">
+    <div className="min-w-0 flex-1 overflow-auto">
+      <div style={{width:layout.width,minWidth:'100%'}}>
         {/* header */}
         <div
-          className="sticky top-0 z-10 grid items-center border-b border-cu-border bg-cu-bg text-[11px] font-semibold uppercase tracking-wide text-cu-text-tertiary"
+          className="sticky top-0 z-30 grid h-9 items-stretch border-b border-cu-border bg-cu-bg text-[11px] font-semibold uppercase tracking-wide text-cu-text-tertiary"
           style={{ gridTemplateColumns: cols }}
         >
-          <Cell className="pl-9 font-semibold">Name</Cell>
-          <Cell>Status</Cell>
-          <Cell>Assignee</Cell>
-          <Cell>Priority</Cell>
-          <Cell>Due date</Cell>
-          <Cell>Start date</Cell>
-          {customFields.map((f) => (
-            <Cell key={f.id}><button type="button" disabled={authorization.role === "GUEST"} onClick={() => openFieldManager({ location: { type: "LIST", id: list.id }, fieldId: f.id })} className="truncate text-left hover:text-cu-purple" title={"Configurar " + f.name}>{f.name}</button></Cell>
-          ))}
+          {columns.map(column=>{
+            const field=customFields.find(f=>column.id===`field:${f.id}`);
+            return <ResizableColumnHeader key={column.id} column={column} layout={layout} className={cn('border-r border-cu-border/60 px-2',column.id==='name'&&'pl-9')}>
+              {field?<button type="button" disabled={authorization.role==='GUEST'} onClick={()=>openFieldManager({location:{type:'LIST',id:list.id},fieldId:field.id})} className="block max-w-full truncate text-left hover:text-cu-purple" title={'Configurar '+field.name}>{field.name}</button>:column.label}
+            </ResizableColumnHeader>;
+          })}
           <Cell className="justify-center">
             <Plus className="h-3.5 w-3.5" />
           </Cell>
@@ -195,7 +195,7 @@ function TableGroup({
                 <span onClick={(e) => e.stopPropagation()}>
                   <StatusControl current={task.status} statuses={statuses} onChange={(s) => onUpdate(task.id, { statusId: s })} />
                 </span>
-                <span className="truncate text-[13px]">{task.name}</span>
+                <span title={task.name} className="min-w-0 truncate text-[13px]">{task.name}</span>
               </Cell>
               <Cell onClick={(e) => e.stopPropagation()}>
                 <StatusControl current={task.status} statuses={statuses} variant="badge" onChange={(s) => onUpdate(task.id, { statusId: s })} />
@@ -263,7 +263,7 @@ function Cell({
   return (
     <div
       onClick={onClick}
-      className={cn("flex h-9 items-center overflow-hidden border-r border-cu-border/60 px-2", className)}
+      className={cn("flex h-9 min-w-0 items-center overflow-hidden border-r border-cu-border/60 px-2", className)}
     >
       {children}
     </div>

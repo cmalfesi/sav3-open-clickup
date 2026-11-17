@@ -93,6 +93,22 @@ try{const db=await mf.getD1Database('DB');for(const f of readdirSync('drizzle').
  const privateOverview=await mf.dispatchFetch('https://site.test/api/team/presence',{headers:{Cookie:cookie}});if(privateOverview.status!==403)throw new Error('Presence overview exposed');
  const guestChecklist=await mf.dispatchFetch('https://site.test/api/checklist-items/'+ci.id,{method:'PATCH',headers:{Cookie:cookie,Origin:'https://site.test','Content-Type':'application/json'},body:'{"resolved":false}'});if(guestChecklist.status!==403)throw new Error('Guest checklist write allowed');
  console.log('Same-session permission change, revision update and owner-only presence passed');
+ // Personal widths use the compiled self-preference route, including read-only users.
+ await db.prepare("INSERT INTO View(id,listId,name,type,config) VALUES('width-list','l','List','LIST','{}'),('width-table','l','Table','TABLE','{}')").run();
+ async function preferenceWrite(body:unknown,expected=200){
+  const r=await mf.dispatchFetch('https://site.test/api/lists/l/view-preferences',{method:'PATCH',headers:{Cookie:cookie,Origin:'https://site.test','Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(r.status!==expected)throw new Error('Column preference write '+r.status+' '+await r.text());
+ }
+ await preferenceWrite({views:{'width-list':{columnWidths:{name:450}},'width-table':{columnWidths:{name:700}}}});
+ await preferenceWrite({views:{'width-list':{columnWidths:{assignee:160}}}});
+ await preferenceWrite({views:{'width-list':{columnWidths:{name:1601}}}},400);
+ const savedWidths=await mf.dispatchFetch('https://site.test/api/lists/l/view-preferences',{headers:{Cookie:cookie}});
+ const savedBody=await savedWidths.json() as {views:Record<string,{columnWidths?:Record<string,number>}>};
+ if(savedWidths.status!==200||savedBody.views['width-list'].columnWidths?.name!==450||savedBody.views['width-list'].columnWidths?.assignee!==160||savedBody.views['width-table'].columnWidths?.name!==700)throw new Error('Personal column widths did not round-trip');
+ const ownerWidths=await web('/api/lists/l/view-preferences') as {views:Record<string,{columnWidths?:Record<string,number>}>};
+ if(ownerWidths.views['width-list'].columnWidths)throw new Error('Column widths leaked between users');
+ const anonymousWidths=await mf.dispatchFetch('https://site.test/api/lists/l/view-preferences');if(anonymousWidths.status!==401)throw new Error('Anonymous preferences allowed');
+ console.log('Personal column widths round-trip, partial merge, per-view/user isolation, guest presentation and validation passed');
  await db.prepare('UPDATE Session SET expiresAt=? WHERE id=?').bind(new Date(Date.now()-1000).toISOString(),browserSessionId).run();
  const expiredPresence=await ping();if(expiredPresence.status!==401||expiredPresence.headers.has('Set-Cookie'))throw new Error('Expired session was revived');
  console.log('Expired browser session rejected without renewal');

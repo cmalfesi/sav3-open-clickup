@@ -22,6 +22,20 @@ The Site exposes owner-authorized MCP tools for preparing the copy, reading work
 
 Verification: generated schema and seed are validated together, including foreign keys, record counts and idempotency. Typecheck, build and the applicable upstream unit tests must pass. Managed preview requires a real ChatGPT identity; do not introduce an authentication bypass for preview.
 
+## Personal column widths (0.12.7, pending release)
+
+List and Table views now have resizable columns. Drag a divider in the header;
+the rows follow immediately and the final width is saved to your personal view.
+Widths are independent for each user, List and view, including Custom Fields.
+They do not change the shared view configuration or another person's layout.
+
+Name starts at 600 px; other columns use defaults appropriate to their data type.
+Long titles truncate instead of stretching the grid, and remain available in the
+task and on hover. Narrow screens scroll horizontally. Tab to a divider and use
+Left/Right (10 px), Shift+Left/Right (50 px), Home to reset, or Escape to cancel
+a drag. Double-clicking a divider also restores that column's default width.
+Only the release saves a pointer drag; it does not send a write for each movement.
+
 ## Custom Field Manager
 
 Open **Campos personalizados** from a List toolbar, a Space menu, a custom field

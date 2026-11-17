@@ -42,6 +42,8 @@ import { TagChip } from "@/components/ui/primitives";
 import { CustomFieldControl } from "@/components/views/custom-field-control";
 import { openFieldManager } from "@/components/custom-fields/manager";
 import { BulkBar } from "@/components/views/bulk-bar";
+import {taskColumns} from '@/lib/column-widths';
+import {ResizableColumnHeader,useTaskColumnLayout} from './resizable-columns';
 
 /** Cap rendered rows per group; "Show more" reveals the next page. Keeps the DOM bounded for large lists. */
 const PAGE_SIZE = 50;
@@ -104,7 +106,7 @@ export function ListView({
       }));
     }
     return groupTasks(tasks, groupBy, { statuses, members, fields: list.customFields });
-  }, [sortable, cols, tasks, groupBy, statuses, members]);
+  }, [sortable, cols, tasks, groupBy, statuses, members, list.customFields]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -156,13 +158,13 @@ export function ListView({
     update.mutate({ taskId: id, patch });
   }
 
-  const gridStyle = {
-    gridTemplateColumns: `minmax(260px,1fr) 120px 110px 120px ${customFields.map(() => "150px").join(" ")} 44px`,
-  };
+  const columns=taskColumns('LIST',customFields);
+  const layout=useTaskColumnLayout(columns);
+  const gridStyle = {gridTemplateColumns:layout.template};
 
   const body = (
     <>
-      <ColumnHeader customFields={customFields} gridStyle={gridStyle} onAddField={() => openFieldManager({ location: { type: "LIST", id: list.id } })} />
+      <ColumnHeader columns={columns} layout={layout} customFields={customFields} gridStyle={gridStyle} onAddField={() => openFieldManager({ location: { type: "LIST", id: list.id } })} />
       {groups.map((group) => (
         <Group
           key={group.id}
@@ -184,8 +186,8 @@ export function ListView({
   );
 
   return (
-    <div className="flex-1 overflow-auto">
-      <div className="min-w-max">
+    <div className="min-w-0 flex-1 overflow-auto">
+      <div style={{width:layout.width+24,minWidth:'100%'}}>
         {sortable ? (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd}>
             {body}
@@ -215,10 +217,14 @@ export function ListView({
 }
 
 function ColumnHeader({
+  columns,
+  layout,
   customFields,
   gridStyle,
   onAddField,
 }: {
+  columns:ReturnType<typeof taskColumns>;
+  layout:ReturnType<typeof useTaskColumnLayout>;
   customFields: CustomFieldWithOptions[];
   gridStyle: React.CSSProperties;
   onAddField: () => void;
@@ -226,17 +232,16 @@ function ColumnHeader({
   const { authorization } = useWorkspace();
   return (
     <div
-      className="sticky top-0 z-10 grid items-center border-b border-cu-border bg-cu-bg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-cu-text-tertiary"
+      className="sticky top-0 z-30 grid h-9 items-stretch border-b border-cu-border bg-cu-bg px-3 text-[11px] font-semibold uppercase tracking-wide text-cu-text-tertiary"
       style={gridStyle}
     >
-      <div className="pl-7">Name</div>
-      <div>Assignee</div>
-      <div>Due date</div>
-      <div>Priority</div>
-      {customFields.map((f) => (
-        <button key={f.id} type="button" disabled={authorization.role === "GUEST"} onClick={() => openFieldManager({ fieldId: f.id })} className="truncate text-left hover:text-cu-purple" title={"Configurar " + f.name}>{f.name}</button>
-      ))}
-      <div className="flex justify-center">
+      {columns.map(column=>{
+        const field=customFields.find(f=>column.id===`field:${f.id}`);
+        return <ResizableColumnHeader key={column.id} column={column} layout={layout} className={column.id==='name'?'pl-7':''}>
+          {field?<button type="button" disabled={authorization.role==='GUEST'} onClick={()=>openFieldManager({fieldId:field.id})} className="block max-w-full truncate text-left hover:text-cu-purple" title={'Configurar '+field.name}>{field.name}</button>:column.label}
+        </ResizableColumnHeader>;
+      })}
+      <div className="flex items-center justify-center">
         <button
           disabled={authorization.role === "GUEST"}
           onClick={onAddField}
@@ -454,15 +459,15 @@ function TaskRow({
     <>
       <div
         className={cn(
-          "group grid cursor-pointer items-center border-t border-cu-border/60 px-3",
+          "group grid cursor-pointer items-center border-t border-cu-border/60 px-3 [&>div]:min-w-0 [&>div]:overflow-hidden",
           isSelected ? "bg-cu-purple-light hover:bg-cu-purple-light" : "hover:bg-cu-hover/60",
         )}
         style={gridStyle}
         onClick={() => !renaming && onOpenTask(task.id)}
       >
-        <div className="flex items-center gap-1.5 py-2">
-          {handle && <span className="-ml-1 flex w-3 justify-center">{handle}</span>}
-          <span className="flex w-4 justify-center" onClick={(e) => e.stopPropagation()}>
+        <div className="flex min-w-0 items-center gap-1.5 py-2">
+          {handle && <span className="-ml-1 flex w-3 shrink-0 justify-center">{handle}</span>}
+          <span className="flex w-4 shrink-0 justify-center" onClick={(e) => e.stopPropagation()}>
             <input
               type="checkbox"
               checked={isSelected}
@@ -473,7 +478,7 @@ function TaskRow({
               )}
             />
           </span>
-          <span className="flex w-4 justify-center">
+          <span className="flex w-4 shrink-0 justify-center">
             {hasSubtasks ? (
               <button
                 aria-label={(expanded?"Comprimir subtareas de ":"Expandir subtareas de ")+task.name}
@@ -485,7 +490,7 @@ function TaskRow({
               </button>
             ) : null}
           </span>
-          <span onClick={(e) => e.stopPropagation()}>
+          <span className="shrink-0" onClick={(e) => e.stopPropagation()}>
             <StatusControl current={task.status} statuses={statuses} onChange={(s) => onUpdate(task.id, { statusId: s })} />
           </span>
           {renaming ? (
@@ -498,11 +503,12 @@ function TaskRow({
                 if (e.key === "Escape") setRenaming(false);
               }}
               onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== task.name) onUpdate(task.id, { name: v }); setRenaming(false); }}
-              className="flex-1 rounded border border-cu-purple bg-cu-panel px-1 py-0.5 text-[13px] outline-none"
+              className="min-w-0 flex-1 rounded border border-cu-purple bg-cu-panel px-1 py-0.5 text-[13px] outline-none"
             />
           ) : (
             <span
-              className="truncate text-[13px] text-cu-text"
+              title={task.name}
+              className="min-w-0 truncate text-[13px] text-cu-text"
               onClick={onNameClick}
               onDoubleClick={onNameDoubleClick}
             >
@@ -510,7 +516,7 @@ function TaskRow({
             </span>
           )}
 
-          <span className="ml-1 flex items-center gap-2 text-cu-text-tertiary">
+          <span className="ml-1 flex shrink-0 items-center gap-2 text-cu-text-tertiary">
             {task._count.subtasks > 0 && (
               <span className="flex items-center gap-0.5 text-[11px]"><GitBranch className="h-3 w-3" />{task._count.subtasks}</span>
             )}
@@ -519,7 +525,7 @@ function TaskRow({
             )}
           </span>
 
-          <span className="ml-auto flex items-center gap-1.5 pl-2">
+          <span className="ml-auto flex max-w-[25%] items-center gap-1.5 overflow-hidden pl-2">
             {task.tags.slice(0, 3).map((t) => (
               <TagChip key={t.tagId} name={t.tag.name} color={t.tag.color} />
             ))}
@@ -577,13 +583,13 @@ function TaskRow({
         task.subtasks.map((sub) => (
           <div
             key={sub.id}
-            className="grid cursor-pointer items-center border-t border-cu-border/40 bg-cu-sidebar/40 px-3 hover:bg-cu-hover/60"
+            className="grid cursor-pointer items-center border-t border-cu-border/40 bg-cu-sidebar/40 px-3 hover:bg-cu-hover/60 [&>div]:min-w-0 [&>div]:overflow-hidden"
             style={gridStyle}
             onClick={() => onOpenTask(sub.id)}
           >
             <div className="flex min-w-0 items-center gap-1.5 py-2" style={{paddingLeft:childIndent}}>
-              <StatusCircle status={sub.status} />
-              <span className="truncate text-[13px] text-cu-text">{sub.name}</span>
+              <span className="shrink-0"><StatusCircle status={sub.status} /></span>
+              <span title={sub.name} className="min-w-0 truncate text-[13px] text-cu-text">{sub.name}</span>
             </div>
             <div className="py-2">
               {sub.assignees.length > 0 && (

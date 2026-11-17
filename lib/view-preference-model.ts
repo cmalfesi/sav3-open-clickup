@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {fieldFilterSchema} from './advanced-filters';
 import type { ViewState } from './view-state';
+import {COLUMN_WIDTH_MIN,COLUMN_WIDTH_MAX} from './column-widths';
 
 const ids=z.array(z.string().min(1).max(220)).max(200);
 export const personalViewStateSchema=z.object({
@@ -11,6 +12,7 @@ export const personalViewStateSchema=z.object({
 const flags=z.record(z.string().min(1).max(400),z.boolean());
 export const viewPreferenceSchema=z.object({
  viewState:personalViewStateSchema.optional(),collapsedGroups:flags.optional(),expandedTasks:flags.optional(),
+ columnWidths:z.record(z.string().min(1).max(220),z.number().int().min(COLUMN_WIDTH_MIN).max(COLUMN_WIDTH_MAX)).refine(v=>Object.keys(v).length<=200).optional(),
  calendar:z.object({mode:z.enum(['month','week']).optional(),cursor:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()}).optional(),
 }).strict();
 export type ViewPreference=z.infer<typeof viewPreferenceSchema>;
@@ -25,6 +27,7 @@ export function mergePreference(a:ViewPreference={},b:ViewPreference={}):ViewPre
   ...(a.collapsedGroups||b.collapsedGroups?{collapsedGroups:{...a.collapsedGroups,...b.collapsedGroups}}:{}),
   ...(a.expandedTasks||b.expandedTasks?{expandedTasks:{...a.expandedTasks,...b.expandedTasks}}:{}),
   ...(a.calendar||b.calendar?{calendar:{...a.calendar,...b.calendar}}:{}),
+  ...(a.columnWidths||b.columnWidths?{columnWidths:{...a.columnWidths,...b.columnWidths}}:{}),
  };
 }
 export function mergePreferencePatch(a:PreferencePatch,b:PreferencePatch):PreferencePatch {

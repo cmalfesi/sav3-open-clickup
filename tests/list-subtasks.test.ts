@@ -6,7 +6,7 @@ import {WorkspaceProvider} from '@/components/workspace-context';
 import {ListView} from '@/components/views/list-view';
 import type {Bootstrap} from '@/lib/hooks';
 import type {ListData} from '@/lib/queries';
-vi.mock('@/components/views/personal-view',()=>({useGroupCollapsed:()=>[false,()=>{}],useTaskExpanded:()=>[true,()=>{}]}));
+vi.mock('@/components/views/personal-view',()=>({useGroupCollapsed:()=>[false,()=>{}],useTaskExpanded:()=>[true,()=>{}],useColumnWidths:()=>({widths:{},setWidth:()=>{}})}));
 const status={id:'open',listId:'l',name:'Open',type:'NOT_STARTED',color:'#87909e',position:0,wipLimit:null};
 const sub={id:'child',listId:'l',parentId:'parent',name:'Child meeting',statusId:'open',status,assignees:[]};
 const task={id:'parent',listId:'l',parentId:null,name:'Weekly meeting',statusId:'open',status,assignees:[],tags:[],priority:null,dueDate:null,customFieldValues:[],subtasks:[sub],_count:{subtasks:1,comments:0,checklists:0}};

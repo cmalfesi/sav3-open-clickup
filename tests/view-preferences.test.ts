@@ -2,6 +2,11 @@ import{describe,it,expect}from'vitest';
 import{ViewPreferenceQueue}from'@/lib/view-preference-queue';
 import{mergePreferencePatch,viewStateFromConfig,preferencePatchSchema,type PreferencePatch}from'@/lib/view-preference-model';
 describe('personal view state',()=>{
+ it('coalesces widths by column without dropping other widths or presentation state',()=>{
+  const merged=mergePreferencePatch({views:{v:{columnWidths:{name:450,assignee:120},collapsedGroups:{backlog:true}}}},{views:{v:{columnWidths:{name:600,'field:deal':200}}}});
+  expect(merged.views.v).toEqual({columnWidths:{name:600,assignee:120,'field:deal':200},collapsedGroups:{backlog:true}});
+  for(const width of [-1,63,1601,Infinity,1.5,'600',null])expect(preferencePatchSchema.safeParse({views:{v:{columnWidths:{name:width}}}}).success).toBe(false);
+ });
  it('merges toggles without clearing other groups, preserves explicit expansion and seeds legacy settings',()=>{const merged=mergePreferencePatch({views:{v:{collapsedGroups:{'status:backlog':true},expandedTasks:{parent:true}}}},{views:{v:{collapsedGroups:{'status:backlog':false,'priority:HIGH':true}}}});expect(merged.views.v).toEqual({collapsedGroups:{'status:backlog':false,'priority:HIGH':true},expandedTasks:{parent:true}});expect(viewStateFromConfig({groupBy:'priority'}).groupBy).toBe('priority');expect(preferencePatchSchema.safeParse({userId:'someone',views:{}}).success).toBe(false);});
  it('serializes rapid writes across views and journals the latest state until acknowledged',async()=>{
   const sent:PreferencePatch[]=[],journals:PreferencePatch[]=[];let release:()=>void=()=>{};
