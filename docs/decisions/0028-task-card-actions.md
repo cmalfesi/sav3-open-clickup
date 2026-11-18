@@ -37,6 +37,9 @@ The detailed feature audit and next-stage recommendations are in
 for features that do not work. Preserve the pending session and column changes
 in 0.12.7 / draft PR #24; no production deployment is requested.
 
+Release update (2026-11-18): the user explicitly authorized merging the PR and
+publishing 0.12.7. See `docs/RELEASE-0.12.7.md`; the initial draft-only hold ended.
+
 Validation includes unit/event, D1 and compiled Worker tests. The managed preview
 currently serves unstyled SSR HTML; visual, mobile, touch and browser keyboard/focus
 QA remains pending and must be reported honestly.

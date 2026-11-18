@@ -1,7 +1,7 @@
 # Menú de tareas: evaluación y alcance
 
 Fecha: 18 de noviembre de 2026. Rama: `feat/session-idle-5-days`, PR #24.
-Versión propuesta: 0.12.7. Producción no modificada.
+Versión: 0.12.7. La implementación se preparó sin modificar producción; el usuario autorizó su publicación el 18 de noviembre de 2026. Ver `docs/RELEASE-0.12.7.md`.
 
 La referencia aportada corresponde a la ventana de una tarea, no a una tarjeta
 de métricas del dashboard. Se revisaron la documentación oficial de ClickUp y

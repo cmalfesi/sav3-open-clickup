@@ -3,7 +3,7 @@
 Date: 2026-11-17
 Prepared release: 0.12.7
 Branch: feat/session-idle-5-days
-Status: implemented for review; not merged or deployed
+Status: implementation verified; merge and production release authorized 2026-11-18
 
 ## Problem and policy
 
@@ -31,4 +31,4 @@ Isolated D1 tests advance the clock across several days: persistent login and co
 
 The compiled Worker smoke exercises actual login and presence HTTP headers, renewal of a shortened legacy deadline, unchanged expiry for a hidden tab, and 401 without renewal for an expired cookie.
 
-This work must stay on the new GitHub branch/PR. Do not merge or publish a Sites version until the user separately requests deployment. An eventual deployment should ask active users to load the new browser bundle; there is no mass logout or session resurrection.
+The initial request kept this work on a branch until separate deployment approval. The user explicitly authorized merge and production publication on 2026-11-18. Active users should load the new browser bundle to send activity signals; no mass logout or session resurrection is performed. See `docs/RELEASE-0.12.7.md` for the complete release scope.

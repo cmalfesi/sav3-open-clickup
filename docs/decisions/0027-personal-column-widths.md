@@ -79,3 +79,6 @@ unit/D1 suites, build and compiled Worker verification before committing.
 
 This joins pending 0.12.7 on `feat/session-idle-5-days` / draft PR #24. Preserve the
 five-day inactivity session changes. Do not merge or deploy without a later request.
+
+Release update (2026-11-18): the user explicitly requested GitHub integration and
+production deployment. See `docs/RELEASE-0.12.7.md`; the original hold is fulfilled.
