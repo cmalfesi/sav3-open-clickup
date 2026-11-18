@@ -2,11 +2,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {apiSend} from "@/lib/api";
 import {PasswordField} from './password-field';
+import {safeAppReturnTo} from '@/lib/task-links';
 export function accountRequest<T = {ok:boolean}>(path:string,body:unknown,method:"POST"|"PATCH"|"PUT"|"DELETE"='POST'):Promise<T>{return apiSend<T>(path,method,body);}
 const field = 'mt-1 min-h-11 w-full rounded-md border border-cu-border bg-cu-panel px-3 text-cu-text focus:outline-2 focus:outline-cu-purple';
 export function LoginForm() { const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false); return <form onSubmit={async (e) => { e.preventDefault(); setBusy(true); setError(''); try {
     await accountRequest('/api/auth/login', { email, password });
-    window.location.assign('/home');
+    window.location.assign(safeAppReturnTo(new URLSearchParams(window.location.search).get('return_to')));
 }
 catch (e) {
     setError((e as Error).message);

@@ -24,6 +24,7 @@ import { loadActor, teamRoute, isPublicAuth } from "../lib/team-service";
 import { withActor, AccessError } from "../lib/access-context";
 import { authorizeResourceRequest } from "../lib/request-access";
 import { customFieldRoute } from "../lib/custom-field-service";
+import {safeAppReturnTo} from '../lib/task-links';
 
 const worker = {
   async scheduled(_controller:ScheduledController,env:Cloudflare.Env,ctx:ExecutionContext){if(env.DB)ctx.waitUntil(Promise.all([runScheduledWork(env.DB),runReports(env.DB,env),deliverWebhooks(env.DB)]));},
@@ -64,7 +65,10 @@ const worker = {
     if (teamResponse) return privateResponse(teamResponse);
     if (access !== "page" && !isPublicAuth(url.pathname)) {
       if (!actor) {
-        if (request.headers.get("Accept")?.includes("text/html")) return privateResponse(Response.redirect(new URL("/login",url),303));
+        if (request.headers.get("Accept")?.includes("text/html")) {
+          const login=new URL('/login',url);login.searchParams.set('return_to',safeAppReturnTo(url.pathname+url.search));
+          return privateResponse(Response.redirect(login,303));
+        }
         return privateResponse(Response.json({error:"Iniciá sesión para acceder."},{status:401}));
       }
       try { await authorizeResourceRequest(request, env.DB, actor); }

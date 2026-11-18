@@ -36,6 +36,20 @@ Left/Right (10 px), Shift+Left/Right (50 px), Home to reset, or Escape to cancel
 a drag. Double-clicking a divider also restores that column's default width.
 Only the release saves a pointer drag; it does not send a write for each movement.
 
+## Task cards (0.12.7, pending release)
+
+The task card can expand to the available window and restore its original size
+without reopening its editor. Escape restores an expanded card first. The task
+menu includes Copy link, Copy ID and Open in new tab; copying uses the task's
+actual List and handles browser clipboard denial with selectable text. A shared
+link retains its destination through login and still requires task access.
+
+The menu also opens existing reminders, Custom Fields and dependencies, retains
+duplicate/move/template actions, and adds archive/unarchive and recoverable delete
+with confirmation. Actions depend on server-provided task/List permissions.
+See [the complete menu evaluation](docs/product/task-card-menu-evaluation.md) for
+implemented options, existing limitations and proposed follow-up work.
+
 ## Custom Field Manager
 
 Open **Campos personalizados** from a List toolbar, a Space menu, a custom field

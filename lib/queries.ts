@@ -5,6 +5,7 @@ import { prisma, getD1 } from "@/lib/db";
 import { readListTasks } from "./list-task-reader";
 import { canManageListView } from "./list-view-service";
 import { effectiveFieldIds } from "./custom-field-service";
+import {taskMenuPermissions} from './task-menu-policy';
 
 // ----------------------------------------------------------------------------
 // Reusable include shapes (single source of truth for API <-> client types)
@@ -213,7 +214,7 @@ export async function getTaskDetail(taskId: string) {
   task.activities=task.activities.filter(x=>{const data=x.data as {fieldId?:string}|null;return !data?.fieldId||visibleFieldIds.has(data.fieldId)});
   // Imported activity payloads may contain cross-resource names.
   if(!a.access.admin) task.activities=task.activities.filter(x=>{const d=x.data as Record<string,unknown>|null;return ['web','mcp','api'].includes(String(d?.source));});
-  return task;
+  return {...task,menuPermissions:taskMenuPermissions(a,task)};
 }
 
 export type TaskDetail = NonNullable<Awaited<ReturnType<typeof getTaskDetail>>>;
