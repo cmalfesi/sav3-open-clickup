@@ -32,6 +32,12 @@ export function usePersonalViews(listId:string){
 
 type Presentation={state:ViewPreference;groupBy:GroupBy;update:(patch:ViewPreference)=>void};
 const Context=createContext<Presentation|null>(null);
+export function useColumnWidths(){
+ const ctx=useContext(Context),[local,setLocal]=useState<Record<string,number>>({});
+ return {widths:ctx?.state.columnWidths??local,setWidth:(id:string,width:number)=>{
+  if(ctx)ctx.update({columnWidths:{[id]:width}});else setLocal(old=>({...old,[id]:width}));
+ }};
+}
 export function PersonalView({state,groupBy,update,children}:Presentation&{children:React.ReactNode}){return <Context.Provider value={{state,groupBy,update}}>{children}</Context.Provider>;}
 export function useCollapsedGroups():[Set<string>,Dispatch<SetStateAction<Set<string>>>]{
  const ctx=useContext(Context),[local,setLocal]=useState(new Set<string>()),prefix=(ctx?.groupBy??'status')+':';

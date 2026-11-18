@@ -1,3 +1,5 @@
+import {SESSION_IDLE_SECONDS,cookieToken,sessionCookie} from "./session-policy";
+export {cookieName,sessionCookie} from "./session-policy";
 import {nextUserColor} from "./user-colors";
 import {sendTransactionalMail,type MailEnvironment} from "./mail-service";
 import { dashboardRoute } from "./dashboard-service";
@@ -6,12 +8,8 @@ import { z } from "zod";
 import { Access, AccessError, type Actor, type Grant, type Resource, type Role } from "./access-context";
 import { hashPassword, verifyPassword } from "./password";
 const WORKSPACE = "90132980889";
-const SESSION_SECONDS = 12 * 60 * 60;
 export const digest = (s: string) => createHash("sha256").update(s).digest("hex");
 const token = () => randomBytes(32).toString("hex");
-export const cookieName = (req: Request) => new URL(req.url).protocol === "https:" ? "__Host-sav3_session" : "sav3_session";
-function cookieToken(req: Request) { return req.headers.get("cookie")?.split(";").map(s => s.trim()).find(s => s.startsWith(cookieName(req) + "="))?.split("=")[1]; }
-export const sessionCookie = (req: Request, value: string, age = SESSION_SECONDS) => `${cookieName(req)}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${new URL(req.url).protocol === "https:" ? "; Secure" : ""}`;
 const userColumns = "u.id,u.email,u.name,u.color,u.avatarUrl";
 type User = Actor["user"];
 async function rows<T>(db: D1Database, sql: string, ...args: (string | number)[]) { return (await db.prepare(sql).bind(...args).all<T>()).results; }
@@ -136,7 +134,7 @@ function validateAccess(a: Actor, data: z.infer<typeof accessSchema>) {
 }
 export async function newSession(db: D1Database, req: Request, userId: string) {
     const raw = token();
-    await db.prepare('INSERT INTO Session (id,userId,expiresAt) VALUES (?,?,?)').bind(digest(raw), userId, new Date(Date.now() + SESSION_SECONDS * 1000).toISOString()).run();
+    await db.prepare('INSERT INTO Session (id,userId,expiresAt) VALUES (?,?,?)').bind(digest(raw), userId, new Date(Date.now() + SESSION_IDLE_SECONDS * 1000).toISOString()).run();
     return Response.json({ ok: true }, { headers: { "Set-Cookie": sessionCookie(req, raw) } });
 }
 const publicEndpoints = new Set(["/api/auth/login", "/api/auth/invitation", "/api/auth/activate"]);
@@ -201,7 +199,7 @@ export async function teamRoute(req: Request, db: D1Database, a: Actor | null, m
             ];
             for (const g of JSON.parse(invite.grants) as Grant[])
                 writes.push(db.prepare(`INSERT INTO ResourceGrant (userId,resourceType,resourceId,level) SELECT ?,?,?,? WHERE ${condition}`).bind(invite.userId, g.resourceType, g.resourceId, g.level, invite.id, nonce));
-            writes.push(db.prepare(`INSERT INTO Session (id,userId,expiresAt) SELECT ?,?,? WHERE ${condition}`).bind(digest(sid), invite.userId, new Date(Date.now() + SESSION_SECONDS * 1000).toISOString(), invite.id, nonce));
+            writes.push(db.prepare(`INSERT INTO Session (id,userId,expiresAt) SELECT ?,?,? WHERE ${condition}`).bind(digest(sid), invite.userId, new Date(Date.now() + SESSION_IDLE_SECONDS * 1000).toISOString(), invite.id, nonce));
             const result = await db.batch(writes);
             if (!result[0].meta.changes)
                 throw new AccessError(410, "Esta invitación ya no está disponible.");

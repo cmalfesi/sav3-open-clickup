@@ -131,6 +131,12 @@ describe("large lists on D1", () => {
     const a=member([{resourceType:"TASK",resourceId:"task-0",level:"VIEW"},{resourceType:"TASK",resourceId:"private-sub",level:"NONE"}]);
     await withActor(a,async()=>{const list=await getListData("test-list");expect(list?.tasks.map(t=>t.id)).toEqual(["task-0"]);expect(list?.tasks[0].subtasks).toEqual([]);expect(list?.dependencies).toEqual([]);const task=await getTaskDetail("task-0");expect(task?.subtasks).toEqual([]);expect(task?.blocking).toEqual([]);expect(task?._count.subtasks).toBe(0);const tree=await getWorkspaceTree();expect(tree?.spaces[0].lists[0]._count.tasks).toBe(1);await expect(getTaskDetail("task-129")).rejects.toMatchObject({status:403});});
   });
+  it('returns task-specific menu capabilities rather than treating every member as an editor',async()=>{
+    const readonly=await withActor(member([{resourceType:'TASK',resourceId:'task-0',level:'VIEW'}]),()=>getTaskDetail('task-0'));
+    expect(readonly?.menuPermissions).toMatchObject({canEdit:false,canDelete:false,canMove:false,canSaveTemplate:false,canManageFields:false});
+    const scoped=await withActor(member([{resourceType:'TASK',resourceId:'task-0',level:'EDIT'}]),()=>getTaskDetail('task-0'));
+    expect(scoped?.menuPermissions).toMatchObject({canEdit:true,canDelete:true,canDuplicate:false,canManageFields:false});
+  });
   it("returns the immediate parent for an authorized subtask and no parent for root tasks",async()=>{
     const a={...member([]),role:'OWNER' as const,access:new Access('OWNER',true,nodes,[])};
     await withActor(a,async()=>{

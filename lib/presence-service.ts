@@ -1,3 +1,4 @@
+import {renewSessionForActivity} from './session-policy';
 import {z} from 'zod';
 import {AccessError,type Actor} from './access-context';
 
@@ -33,6 +34,9 @@ export async function presenceRoute(req:Request,db:D1Database,a:Actor|null){
   if(req.method!=='POST')throw new AccessError(405,'Solo POST.');
   if(req.headers.get('Origin')!==new URL(req.url).origin)throw new AccessError(403,'Origen no permitido.');
   if(Number(req.headers.get('Content-Length')??0)>4096)throw new AccessError(413,'Solicitud demasiado grande.');
-  return Response.json(await recordPresence(db,a,presenceSchema.parse(await req.json())));
+  const input=presenceSchema.parse(await req.json());
+  const result=await recordPresence(db,a,input);
+  const cookie=await renewSessionForActivity(db,req,a,input);
+  return Response.json(result,{headers:cookie?{'Set-Cookie':cookie}:undefined});
  }catch(e){if(e instanceof AccessError)return Response.json({error:e.message},{status:e.status});if(e instanceof z.ZodError||e instanceof SyntaxError)return Response.json({error:'Datos de presencia inválidos.'},{status:400});console.error('[presence]',e instanceof Error?e.name:'error');return Response.json({error:'No pudimos actualizar la presencia.'},{status:500});}
 }

@@ -45,6 +45,7 @@ describe('invited accounts on D1', () => {
         const cookie = accept.headers.get('Set-Cookie')!.split(';')[0];
         expect(accept.headers.get('Set-Cookie')).toContain('HttpOnly');
         expect(accept.headers.get('Set-Cookie')).toContain('Secure');
+        expect(accept.headers.get('Set-Cookie')).toContain('Max-Age=432000');
         const member = await loadActor(db, new Request(origin + '/home', { headers: { Cookie: cookie } }));
         expect(member!.role).toBe('MEMBER');
         expect(member!.user.email).toBe('member@example.com');

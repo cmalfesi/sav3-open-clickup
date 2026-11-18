@@ -2,13 +2,13 @@
 
 import {ParentTaskLink} from "./parent-task-link";
 import {ReminderControl} from "./reminder-control";
+import {TaskExpandButton,taskWindowClass} from './task-window';
 import {putSavedTask,subtaskDeleteOptions} from "@/lib/task-cache";
 import { useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   X,
-  Expand,
   TextAlignStart,
   SquareCheckBig,
   Calendar as CalendarIcon,
@@ -59,9 +59,13 @@ export function TaskModal({
   onOpenTask?: (id: string, listId?: string) => void;
 }) {
   const qc = useQueryClient();
+  const [expanded,setExpanded]=useState(false);
+  const [reminderTask,setReminderTask]=useState<string|null>(null);
+  const dependenciesRef=useRef<HTMLElement>(null),fieldsRef=useRef<HTMLDivElement>(null);
+  function reveal(section:HTMLElement|null){section?.scrollIntoView({block:'start'});section?.focus({preventScroll:true});}
   const { currentUser, workspace } = useWorkspace();
   const mentions = workspace.members.map((m) => ({ id: m.user.id, label: m.user.name }));
-  const { data: task, isLoading } = useQuery({
+  const { data: task, isLoading, isError } = useQuery({
     queryKey: ["task", taskId],
     queryFn: ({signal}) => apiGet<TaskDetail>(`/api/tasks/${taskId}`,signal),
   });
@@ -98,13 +102,17 @@ export function TaskModal({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px]" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-50 flex h-[88vh] w-[min(1080px,94vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-cu-panel shadow-2xl outline-none"
+          className={taskWindowClass(expanded)}
+          onEscapeKeyDown={e=>{if(expanded){e.preventDefault();setExpanded(false);}}}
           aria-describedby={undefined}
         >
           <Dialog.Title className="sr-only">Task details</Dialog.Title>
 
           {isLoading || !task ? (
-            <TaskModalSkeleton />
+            <>
+              <Dialog.Close aria-label="Cerrar tarea" className="absolute right-3 top-3 z-10 rounded p-1.5 text-cu-text-secondary hover:bg-cu-hover"><X className="h-4 w-4"/></Dialog.Close>
+              {isError?<p role="alert" className="p-8 text-sm text-cu-text-secondary">No pudimos abrir esta tarea. Puede haberse eliminado o no estar disponible con tus permisos.</p>:<TaskModalSkeleton/>}
+            </>
           ) : (
             <>
               {/* header */}
@@ -115,12 +123,11 @@ export function TaskModal({
                   variant="badge"
                   onChange={(statusId) => update.mutate({ statusId })}
                 />
-                <span className="text-[13px] text-cu-text-tertiary">in {task.list.name}</span>
-                <div className="ml-auto flex items-center gap-1">
-                  <ReminderControl taskId={taskId}/><TaskMenu taskId={taskId} defaultName={task.name} listId={listId} onOpenTask={onOpenTask} />
-                  <button aria-label="Expand" className="rounded p-1.5 text-cu-text-tertiary hover:bg-cu-hover">
-                    <Expand className="h-4 w-4" />
-                  </button>
+                <span className="min-w-0 truncate text-[13px] text-cu-text-tertiary">in {task.list.name}</span>
+                <div className="ml-auto flex shrink-0 items-center gap-1">
+                  {task.menuPermissions?.canRemind&&<ReminderControl key={task.id} taskId={taskId} open={reminderTask===taskId} onOpenChange={open=>setReminderTask(open?taskId:null)}/>}
+                  <TaskMenu key={task.id} task={task} onClose={onClose} onOpenTask={onOpenTask} onShowDependencies={()=>reveal(dependenciesRef.current)} onShowFields={()=>reveal(fieldsRef.current)} onReminder={()=>setReminderTask(taskId)}/>
+                  <TaskExpandButton expanded={expanded} onToggle={()=>setExpanded(value=>!value)}/>
                   <Dialog.Close aria-label="Close" className="rounded p-1.5 text-cu-text-tertiary hover:bg-cu-hover">
                     <X className="h-4 w-4" />
                   </Dialog.Close>
@@ -129,9 +136,9 @@ export function TaskModal({
 
               <ParentTaskLink parentId={task.parentId} parent={task.parent} onOpenTask={onOpenTask}/>
 
-              <div key={task.id} className="flex min-h-0 flex-1 flex-col md:flex-row">
+              <div key={task.id} className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
                 {/* main */}
-                <div className="flex min-w-0 flex-1 flex-col overflow-y-auto p-4 md:p-6">
+                <div className="flex min-w-0 flex-none flex-col p-4 md:flex-1 md:overflow-y-auto md:p-6">
                   <TitleField
                     key={taskUpdate.isError ? taskUpdate.submittedAt : "title"}
                     value={task.name}
@@ -182,12 +189,12 @@ export function TaskModal({
                     onChange={invalidate}
                   />
 
-                  <Dependencies
+                  <section ref={dependenciesRef} tabIndex={-1} aria-label="Dependencias de la tarea" className="scroll-mt-4 rounded focus-visible:outline-2 focus-visible:outline-cu-purple"><Dependencies
                     taskId={taskId}
                     blockedBy={task.blockedBy}
                     blocking={task.blocking}
                     onChange={invalidate}
-                  />
+                  /></section>
 
                   {/* activity / comments */}
                   <section className="mt-8">
@@ -212,7 +219,7 @@ export function TaskModal({
                 </div>
 
                 {/* sidebar */}
-                <aside className="w-full shrink-0 overflow-y-auto border-t border-cu-border bg-cu-sidebar/40 p-4 md:w-[320px] md:border-l md:border-t-0">
+                <aside className="w-full shrink-0 border-t border-cu-border bg-cu-sidebar/40 p-4 md:w-[320px] md:overflow-y-auto md:border-l md:border-t-0">
                   <DetailRow icon={<UserGlyph />} label="Assignees">
                     <AssigneeControl
                       assignees={task.assignees.map((a) => a.user)}
@@ -269,7 +276,7 @@ export function TaskModal({
 
                   {/* custom fields */}
                   {task.list.customFields.length > 0 && (
-                    <div className="mt-4 border-t border-cu-border pt-4">
+                    <div ref={fieldsRef} tabIndex={-1} aria-label="Campos personalizados de la tarea" className="mt-4 scroll-mt-4 rounded border-t border-cu-border pt-4 focus-visible:outline-2 focus-visible:outline-cu-purple">
                       <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-cu-text-tertiary">
                         Custom Fields
                       </div>
@@ -284,6 +291,7 @@ export function TaskModal({
                       ))}
                     </div>
                   )}
+                  {task.list.customFields.length===0&&<div ref={fieldsRef} tabIndex={-1} aria-label="Campos personalizados de la tarea" className="mt-4 rounded border-t border-cu-border pt-4 text-xs text-cu-text-secondary focus-visible:outline-2 focus-visible:outline-cu-purple">Esta lista no tiene campos personalizados.</div>}
 
                   <div className="mt-4 border-t border-cu-border pt-4 text-[11px] text-cu-text-tertiary">
                     {task.createdBy && <div>Created by {task.createdBy.name}</div>}

@@ -22,6 +22,34 @@ The Site exposes owner-authorized MCP tools for preparing the copy, reading work
 
 Verification: generated schema and seed are validated together, including foreign keys, record counts and idempotency. Typecheck, build and the applicable upstream unit tests must pass. Managed preview requires a real ChatGPT identity; do not introduce an authentication bypass for preview.
 
+## Personal column widths (0.12.7)
+
+List and Table views now have resizable columns. Drag a divider in the header;
+the rows follow immediately and the final width is saved to your personal view.
+Widths are independent for each user, List and view, including Custom Fields.
+They do not change the shared view configuration or another person's layout.
+
+Name starts at 600 px; other columns use defaults appropriate to their data type.
+Long titles truncate instead of stretching the grid, and remain available in the
+task and on hover. Narrow screens scroll horizontally. Tab to a divider and use
+Left/Right (10 px), Shift+Left/Right (50 px), Home to reset, or Escape to cancel
+a drag. Double-clicking a divider also restores that column's default width.
+Only the release saves a pointer drag; it does not send a write for each movement.
+
+## Task cards (0.12.7)
+
+The task card can expand to the available window and restore its original size
+without reopening its editor. Escape restores an expanded card first. The task
+menu includes Copy link, Copy ID and Open in new tab; copying uses the task's
+actual List and handles browser clipboard denial with selectable text. A shared
+link retains its destination through login and still requires task access.
+
+The menu also opens existing reminders, Custom Fields and dependencies, retains
+duplicate/move/template actions, and adds archive/unarchive and recoverable delete
+with confirmation. Actions depend on server-provided task/List permissions.
+See [the complete menu evaluation](docs/product/task-card-menu-evaluation.md) for
+implemented options, existing limitations and proposed follow-up work.
+
 ## Custom Field Manager
 
 Open **Campos personalizados** from a List toolbar, a Space menu, a custom field
@@ -256,9 +284,11 @@ del backup, plantillas globales y MCP quedan reservados a administradores y
 propietario en esta versión. Cambios estructurales que afectarían tareas privadas
 requieren permiso de edición sobre esas tareas también.
 
-Las sesiones locales vencen a las doce horas; cambiar permisos o revocar acceso
-cierra las sesiones. Las cuentas nuevas se activan por invitación y sus permisos
-se validan en cada solicitud. El stream de cambios se renueva cada minuto.
+Las sesiones propias de la aplicación vencen tras cinco días sin actividad y se
+renuevan al usar una pestaña visible. Los sondeos automáticos y las pestañas en
+segundo plano no prolongan la sesión. Cambiar permisos conserva la sesión;
+deshabilitar la cuenta, cerrar sesión o restablecer la contraseña la revoca.
+Las cuentas nuevas se activan por invitación y los permisos se validan en cada solicitud.
 
 ## Colaboración y conexiones personales
 
@@ -348,7 +378,7 @@ Task dialogs can delete nested subtasks to the recoverable trash and assign one 
 
 Checklist rows update immediately with rollback on rejected changes, without a full task/list reload. New task, subtask, checklist item and comment inputs stay intact until accepted. Foreground JSON writes and React Query uploads show progress above dialogs, with error feedback; identical concurrent creates are coalesced within the browser. Existing users receive distinct saved avatar backgrounds, and newly invited users receive an unused color.
 
-See [release notes](docs/RELEASE-0.12.5.md) and [decision 0024](docs/decisions/0024-task-edit-feedback-and-checklists.md). Deployment is pending the requested prior notice. Managed preview cannot currently load styles/client scripts, so visual/mobile/keyboard QA remains pending.
+See [release notes](docs/RELEASE-0.12.5.md) and [decision 0024](docs/decisions/0024-task-edit-feedback-and-checklists.md). These changes were included in the previously published releases. Managed preview cannot currently load styles/client scripts, so visual/mobile/keyboard QA remains pending.
 
 ### 0.12.6 — Parent task navigation
 
@@ -357,3 +387,12 @@ Subtask cards show **Tarea padre: [nombre]** below the header. Activate it to op
 See [decision 0025](docs/decisions/0025-parent-task-navigation.md). No schema or hierarchy data changes are required.
 
 In List view, subtasks have more indentation: their status icon aligns with the start of the parent task title. An expanded group ends with a purple **Add Subtask** action, distinct from the group's **Add Task**. New child tasks created here are linked to that parent and inherit its status. For a task without children, choose **Add Subtask** in the row menu.
+
+
+### 0.12.7 — Sesiones, columnas y cards de tareas
+
+La cookie y la sesión del servidor tienen una ventana renovable de cinco días. Cada uso de la pestaña visible actualiza el vencimiento a cinco días desde la última actividad comunicada. Se detectan apertura de la app, selección/foco de la pestaña, teclado, puntero, touch y scroll; el cliente comunica la actividad mediante el heartbeat de hasta 30 segundos. La actividad de cualquier pestaña del mismo navegador renueva la sesión compartida. Otros dispositivos mantienen sus propias sesiones.
+
+Una pestaña abierta sin interacción, los sondeos en segundo plano y los clientes API/MCP no renuevan este plazo. El vencimiento del servidor es el control definitivo. Cerrar sesión, deshabilitar la cuenta o restablecer la contraseña siguen invalidando el acceso; no se reactivan sesiones vencidas o revocadas. Una sesión anterior de 12 horas que siga vigente puede adoptar el nuevo plazo con su siguiente señal activa; si ya venció, hay que ingresar otra vez. No cambia la sesión externa del propietario con ChatGPT ni los tokens de integración.
+
+El 18 de noviembre de 2026 el usuario autorizó fusionar el PR #24 y publicar esta versión. Incluye los anchos personales de columnas y las acciones de cards de tareas descritos arriba. Ver [notas de la versión](docs/RELEASE-0.12.7.md) y [ADR 0026](docs/decisions/0026-five-day-idle-sessions.md).
