@@ -29,6 +29,90 @@ beforeAll(async () => {
 }, 30000);
 afterAll(async () => { await mf?.dispose(); });
 describe('invited accounts on D1', () => {
+    it('creates an assignable member without credentials, session, invitation or enabled access',async()=>{
+      const body={name:'  Ana Pérez  ',email:'Planning@Example.com',role:'MEMBER',scopeAll:false,grants:[]};
+      const response=await call('/api/team/users',body);expect(response.status).toBe(201);
+      const {id}=await response.json() as {id:string};
+      expect(await db.prepare('SELECT name,email,passwordHash FROM User WHERE id=?').bind(id).first()).toEqual({name:'Ana Pérez',email:'planning@example.com',passwordHash:null});
+      expect(await db.prepare('SELECT role FROM WorkspaceMember WHERE userId=?').bind(id).first()).toEqual({role:'MEMBER'});
+      expect(await db.prepare('SELECT enabled,scopeAll FROM AccountAccess WHERE userId=?').bind(id).first()).toEqual({enabled:0,scopeAll:0});
+      for(const table of ['Session','Invitation','IntegrationToken'])expect(await db.prepare(`SELECT count(*) n FROM ${table} WHERE userId=?`).bind(id).first()).toEqual({n:0});
+      const directory=await (await call('/api/team',{},owner,'GET')).json() as {users:{id:string;enabled:number}[]};expect(directory.users.find(u=>u.id===id)?.enabled).toBe(0);
+      expect((await call('/api/auth/login',{email:body.email,password:'Some-password-123'},null)).status).toBe(401);
+      expect(await loadActor(db,new Request(origin+'/home',{headers:{'oai-authenticated-user-id':'planner','oai-authenticated-user-email':'planning@example.com'}}))).toBeNull();
+      expect((await call('/api/team/users',body)).status).toBe(409);
+      expect((await call('/api/team/users',{userId:id,enabled:true},owner,'PATCH')).status).toBe(400);
+      expect((await call('/api/team/users',{userId:id,name:'Ana Pérez Gómez',role:'GUEST'},owner,'PATCH')).status).toBe(200);
+      expect(await db.prepare('SELECT role FROM WorkspaceMember WHERE userId=?').bind(id).first()).toEqual({role:'GUEST'});
+      expect(await db.prepare('SELECT enabled FROM AccountAccess WHERE userId=?').bind(id).first()).toEqual({enabled:0});
+    });
+    it('stages pending invitees immediately and preserves their identity on activation',async()=>{
+      const r=await call('/api/team/invitations',{name:'Juan López',email:'pending-directory@example.com',role:'MEMBER',scopeAll:false,grants:[{resourceType:'TASK',resourceId:'t',level:'EDIT'}]});expect(r.status).toBe(200);
+      const inv=await r.json() as {url:string};const pending=await db.prepare("SELECT id FROM User WHERE email='pending-directory@example.com'").first<{id:string}>();
+      expect(await db.prepare('SELECT role FROM WorkspaceMember WHERE userId=?').bind(pending!.id).first()).toEqual({role:'MEMBER'});
+      expect(await db.prepare('SELECT enabled FROM AccountAccess WHERE userId=?').bind(pending!.id).first()).toEqual({enabled:0});
+      await db.prepare('INSERT INTO TaskAssignee(taskId,userId) VALUES(?,?)').bind('t',pending!.id).run();
+      expect((await call('/api/team/users',{userId:pending!.id,name:'Juan López Correa'},owner,'PATCH')).status).toBe(200);
+      const token=new URLSearchParams(new URL(inv.url).hash.slice(1)).get('token');
+      expect((await call('/api/auth/activate',{token,name:'Juan López Correa',password:'Pending-password-123'},null)).status).toBe(200);
+      expect(await db.prepare('SELECT userId FROM TaskAssignee WHERE taskId=? AND userId=?').bind('t',pending!.id).first()).toEqual({userId:pending!.id});
+      expect(await db.prepare('SELECT enabled FROM AccountAccess WHERE userId=?').bind(pending!.id).first()).toEqual({enabled:1});
+    });
+    it('renames an active user without altering permissions, sessions or pending invitations',async()=>{
+      const inv=await invite('profile-edit@example.com',[{resourceType:'TASK',resourceId:'t',level:'EDIT'}]);
+      const activation=await call('/api/auth/activate',{token:inv.token,name:'Before name',password:'Profile-password-123'},null);
+      const cookie=activation.headers.get('Set-Cookie')!.split(';')[0],request=()=>new Request(origin+'/home',{headers:{Cookie:cookie}}),before=(await loadActor(db,request()))!;
+      const grantsBefore=(await db.prepare('SELECT * FROM ResourceGrant WHERE userId=?').bind(before.user.id).all()).results;
+      expect((await call('/api/team/users',{userId:before.user.id,name:'After name'},owner,'PATCH')).status).toBe(200);
+      const after=(await loadActor(db,request()))!;expect(after.user.name).toBe('After name');expect(after.role).toBe(before.role);expect(after.permissionRevision).not.toBe(before.permissionRevision);
+      expect((await db.prepare('SELECT * FROM ResourceGrant WHERE userId=?').bind(before.user.id).all()).results).toEqual(grantsBefore);
+      expect((await call('/api/team/users',{userId:before.user.id,name:'  '},owner,'PATCH')).status).toBe(400);
+      expect((await call('/api/team/users',{userId:before.user.id,name:'x'.repeat(81)},owner,'PATCH')).status).toBe(400);
+    });
+    it('keeps pending invitations on profile/no-op edits, but revokes stale permissions on role changes',async()=>{
+      const inv=await invite('pending-edit@example.com',[{resourceType:'TASK',resourceId:'t',level:'VIEW'}]);
+      const {userId}= (await db.prepare('SELECT userId FROM Invitation WHERE id=?').bind(inv.id).first<{userId:string}>())!;
+      const patch={userId,name:'Pending name',role:'MEMBER',scopeAll:false,grants:[{resourceType:'TASK',resourceId:'t',level:'VIEW'}]};
+      expect((await call('/api/team/users',patch,owner,'PATCH')).status).toBe(200);
+      expect(await db.prepare('SELECT revoked FROM Invitation WHERE id=?').bind(inv.id).first()).toEqual({revoked:0});
+      expect((await call('/api/team/users',{userId,role:'GUEST'},owner,'PATCH')).status).toBe(200);
+      expect(await db.prepare('SELECT revoked FROM Invitation WHERE id=?').bind(inv.id).first()).toEqual({revoked:1});
+      expect((await call('/api/auth/activate',{token:inv.token,name:'Pending',password:'Pending-edit-password-123'},null)).status).toBe(410);
+    });
+    it('edits imported references in place and adds membership without activating their account',async()=>{
+      await db.prepare("INSERT INTO User(id,email,name) VALUES('reference-person','reference@example.com','Old reference')").run();
+      await db.prepare("INSERT INTO TaskAssignee(taskId,userId) VALUES('t','reference-person')").run();
+      expect((await call('/api/team/users',{userId:'reference-person',name:'María García',role:'MEMBER',scopeAll:false,grants:[]},owner,'PATCH')).status).toBe(200);
+      expect(await db.prepare("SELECT name FROM User WHERE id='reference-person'").first()).toEqual({name:'María García'});
+      expect(await db.prepare("SELECT role FROM WorkspaceMember WHERE userId='reference-person'").first()).toEqual({role:'MEMBER'});
+      expect(await db.prepare("SELECT enabled FROM AccountAccess WHERE userId='reference-person'").first()).toEqual({enabled:0});
+      expect(await db.prepare("SELECT userId FROM TaskAssignee WHERE taskId='t' AND userId='reference-person'").first()).toEqual({userId:'reference-person'});
+    });
+    it('backfills unaccepted legacy invitees without enabling login or replacing existing members',async()=>{
+      await db.batch([
+        db.prepare("INSERT INTO User(id,email,name) VALUES('legacy-invite','legacy-invite@example.com','Legacy'),('expired-invite','expired-invite@example.com','Expired')"),
+        db.prepare("INSERT INTO Invitation(id,tokenHash,userId,email,role,scopeAll,grants,expiresAt,createdAt,createdBy) VALUES('legacy-valid','legacy-valid','legacy-invite','legacy-invite@example.com','MEMBER',0,?, ?,0,'owner'),('legacy-expired','legacy-expired','expired-invite','expired-invite@example.com','MEMBER',0,'[]',1,0,'owner')").bind(JSON.stringify([{resourceType:'TASK',resourceId:'t',level:'VIEW'}]),Date.now()+60000),
+      ]);
+      for(let n=0;n<2;n++)for(const sql of readFileSync('drizzle/0013_inactive_team_directory.sql','utf8').split('--> statement-breakpoint'))if(sql.trim())await db.prepare(sql).run();
+      expect(await db.prepare("SELECT role FROM WorkspaceMember WHERE userId='legacy-invite'").first()).toEqual({role:'MEMBER'});
+      expect(await db.prepare("SELECT enabled FROM AccountAccess WHERE userId='legacy-invite'").first()).toEqual({enabled:0});
+      expect(await db.prepare("SELECT level FROM ResourceGrant WHERE userId='legacy-invite' AND resourceId='t'").first()).toEqual({level:'VIEW'});
+      expect(await db.prepare("SELECT role FROM WorkspaceMember WHERE userId='expired-invite'").first()).toBeNull();
+      expect(await db.prepare("SELECT role FROM WorkspaceMember WHERE userId='owner'").first()).toEqual({role:'OWNER'});
+      await db.batch([db.prepare("UPDATE Invitation SET revoked=1 WHERE id='legacy-valid'"),db.prepare("DELETE FROM ResourceGrant WHERE userId='legacy-invite'")]);
+      for(const sql of readFileSync('drizzle/0013_inactive_team_directory.sql','utf8').split('--> statement-breakpoint'))if(sql.trim())await db.prepare(sql).run();
+      expect(await db.prepare("SELECT level FROM ResourceGrant WHERE userId='legacy-invite'").first()).toBeNull();
+    });
+    it('protects user administration from anonymous, guest, member, cross-origin and admin escalation',async()=>{
+      const body={name:'Protected target',email:'protected-target@example.com',role:'ADMIN',scopeAll:true,grants:[]};
+      expect((await call('/api/team/users',body,null)).status).toBe(401);
+      for(const role of ['GUEST','MEMBER','ADMIN'] as const){const a={...owner,role,access:new Access(role,true,resources,[])};expect((await call('/api/team/users',body,a)).status).toBe(403);}
+      const foreign=new Request(origin+'/api/team/users',{method:'POST',headers:{Origin:'https://other.test'},body:JSON.stringify(body)});expect((await teamRoute(foreign,db,owner))!.status).toBe(403);
+      expect((await call('/api/team/users',{userId:'owner',name:'Owner profile'},owner,'PATCH')).status).toBe(200);
+      const admin={...owner,user:{...owner.user,id:'different-admin'},role:'ADMIN' as const,access:new Access('ADMIN',true,resources,[])};
+      expect((await call('/api/team/users',{userId:'owner',name:'Forbidden'},admin,'PATCH')).status).toBe(403);
+      expect((await call('/api/team/users',{...body,role:'OWNER'})).status).toBe(400);
+    });
     it('preserves the recorded native owner and refuses other native identities',async()=>{
       const request=(id:string)=>new Request(origin+'/home',{headers:{'oai-authenticated-user-id':id,'oai-authenticated-user-email':'owner@example.com'}});
       const native=await loadActor(db,request('nativeowner'));expect(native?.role).toBe('OWNER');expect(native?.kind).toBe('native');expect(await loadActor(db,request('someone-else'))).toBeNull();

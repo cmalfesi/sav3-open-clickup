@@ -15,14 +15,14 @@ async function validateAssignee(taskId:string,userId:string|null|undefined) {
   if(!userId)return;
   const a=actor(),db=getD1();
   const [members,grants,policies]=await db.batch([
-    db.prepare("SELECT m.role,a.scopeAll FROM WorkspaceMember m JOIN AccountAccess a ON a.userId=m.userId AND a.enabled=1 WHERE m.workspaceId=? AND m.userId=?").bind(a.workspaceId,userId),
+    db.prepare("SELECT m.role,coalesce(a.enabled,0) enabled,coalesce(a.scopeAll,0) scopeAll FROM WorkspaceMember m LEFT JOIN AccountAccess a ON a.userId=m.userId WHERE m.workspaceId=? AND m.userId=?").bind(a.workspaceId,userId),
     db.prepare("SELECT resourceType,resourceId,level FROM ResourceGrant WHERE userId=?").bind(userId),
     db.prepare("SELECT resourceType,resourceId FROM ResourcePolicy WHERE restricted=1"),
   ]);
-  const member=members.results[0] as {role:Role;scopeAll:number}|undefined;
+  const member=members.results[0] as {role:Role;scopeAll:number;enabled:number}|undefined;
   const resources=(['SPACE','LIST','TASK','DASHBOARD'] as const).flatMap(type=>a.access.resources(type));
-  if(!member||!new Access(member.role,!!member.scopeAll,resources,grants.results as Grant[],(policies.results as {resourceType:string;resourceId:string}[]).map(p=>`${p.resourceType}:${p.resourceId}`)).can('TASK',taskId))
-    throw new AccessError(400,'El responsable debe ser un usuario activo con acceso a esta tarea.');
+  if(!member||(!!member.enabled&&!new Access(member.role,!!member.scopeAll,resources,grants.results as Grant[],(policies.results as {resourceType:string;resourceId:string}[]).map(p=>`${p.resourceType}:${p.resourceId}`)).can('TASK',taskId)))
+    throw new AccessError(400,'Elegí un miembro del equipo. Si tiene acceso habilitado, también debe poder ver esta tarea.');
 }
 export async function addChecklistItem(checklistId:string,input:z.infer<typeof checklistItemInput>) {
   const a=actor();
@@ -46,17 +46,17 @@ export async function updateChecklistItem(itemId:string,input:z.infer<typeof che
   return saved;
 }
 
-/** List only enabled members who can read this task; assignment grants no new access. */
+/** Inactive workspace members can receive planning assignments without gaining access. */
 export async function checklistAssignees(taskId:string){
  const a=actor();a.access.assert('TASK',taskId);
  const [members,grants,policies]=await getD1().batch([
-  getD1().prepare('SELECT u.id,u.name,u.email,u.color,u.avatarUrl,m.role,a.scopeAll FROM User u JOIN AccountAccess a ON a.userId=u.id AND a.enabled=1 JOIN WorkspaceMember m ON m.userId=u.id AND m.workspaceId=? ORDER BY u.name,u.id').bind(a.workspaceId),
+  getD1().prepare('SELECT u.id,u.name,u.email,u.color,u.avatarUrl,m.role,coalesce(a.enabled,0) enabled,coalesce(a.scopeAll,0) scopeAll FROM User u LEFT JOIN AccountAccess a ON a.userId=u.id JOIN WorkspaceMember m ON m.userId=u.id AND m.workspaceId=? ORDER BY u.name,u.id').bind(a.workspaceId),
   getD1().prepare('SELECT userId,resourceType,resourceId,level FROM ResourceGrant'),
   getD1().prepare('SELECT resourceType,resourceId FROM ResourcePolicy WHERE restricted=1'),
  ]);
  const resources=(['SPACE','LIST','TASK','DASHBOARD'] as const).flatMap(type=>a.access.resources(type));
  const restricted=(policies.results as {resourceType:string;resourceId:string}[]).map(p=>`${p.resourceType}:${p.resourceId}`);
- return (members.results as (import('./queries').UserLite&{role:Role;scopeAll:number})[])
-  .filter(u=>new Access(u.role,!!u.scopeAll,resources,(grants.results as (Grant&{userId:string})[]).filter(g=>g.userId===u.id),restricted).can('TASK',taskId))
-  .map(({id,name,email,color,avatarUrl})=>({id,name,email,color,avatarUrl}));
+ return (members.results as (import('./queries').UserLite&{role:Role;scopeAll:number;enabled:number})[])
+  .filter(u=>!u.enabled||new Access(u.role,!!u.scopeAll,resources,(grants.results as (Grant&{userId:string})[]).filter(g=>g.userId===u.id),restricted).can('TASK',taskId))
+  .map(({id,name,email,color,avatarUrl,enabled})=>({id,name,email,color,avatarUrl,loginEnabled:!!enabled}));
 }

@@ -47,6 +47,27 @@ try{const db=await mf.getD1Database('DB');for(const f of readdirSync('drizzle').
   const r=await mf.dispatchFetch('https://site.test'+path,{method,headers:{...native,'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
   const data=await r.json();if(r.status!==expected)throw new Error(path+' '+r.status+' '+JSON.stringify(data));return data;
  }
+ // User administration and inactive assignment through the compiled router (isolated fixtures only).
+ const planned=await web('/api/team/users','POST',{name:'Planning Person',email:'planning@example.test',role:'MEMBER',scopeAll:false,grants:[]},201) as {id:string};
+ await web('/api/team/users','PATCH',{userId:planned.id,name:'Planning Person Updated',role:'GUEST'});
+ const directory=await web('/api/bootstrap') as {workspace:{members:{user:{id:string;name:string;loginEnabled:boolean}}[]}};
+ const plannedUser=directory.workspace.members.find(m=>m.user.id===planned.id)?.user;
+ if(plannedUser?.name!=='Planning Person Updated'||plannedUser.loginEnabled!==false)throw new Error('Inactive user missing from assignment directory');
+ await web('/api/tasks/'+first.id,'PATCH',{assigneeIds:[planned.id]});
+ const plannedTask=await web('/api/tasks/'+first.id) as {assignees:{user:{id:string}}[]};
+ if(!plannedTask.assignees.some(x=>x.user.id===planned.id))throw new Error('Inactive task assignment missing');
+ const plannedChecklist=await web('/api/tasks/'+first.id+'/checklists','POST',{},201) as {id:string};
+ const plannedCandidates=await web('/api/tasks/'+first.id+'/checklist-assignees') as {id:string;loginEnabled:boolean}[];
+ if(!plannedCandidates.some(u=>u.id===planned.id&&!u.loginEnabled))throw new Error('Inactive checklist candidate missing');
+ await web('/api/checklists/'+plannedChecklist.id+'/items','POST',{name:'Planning only',assigneeId:planned.id},201);
+ if(await db.prepare('SELECT id FROM Notification WHERE userId=?').bind(planned.id).first())throw new Error('Inactive recipient was notified');
+ if(await db.prepare('SELECT id FROM Session WHERE userId=?').bind(planned.id).first())throw new Error('Inactive member received a session');
+ if(await db.prepare('SELECT id FROM Invitation WHERE userId=?').bind(planned.id).first())throw new Error('Inactive create sent an invitation');
+ const disabled=await db.prepare('SELECT enabled FROM AccountAccess WHERE userId=?').bind(planned.id).first() as {enabled:number}|null;
+ if(disabled?.enabled!==0)throw new Error('Editing an inactive role enabled login');
+ const inactiveLogin=await mf.dispatchFetch('https://site.test/api/auth/login',{method:'POST',headers:{Origin:'https://site.test','Content-Type':'application/json'},body:JSON.stringify({email:'planning@example.test',password:'No-credential-123'})});
+ if(inactiveLogin.status!==401)throw new Error('Inactive user authenticated');
+ console.log('User profile/global role editing and inactive task/checklist assignments preserve disabled authentication');
  await db.prepare("INSERT INTO ResourceGrant(userId,resourceType,resourceId,level) VALUES('recovery-user','LIST','l','EDIT')").run();
  const cl=await web('/api/tasks/'+first.id+'/checklists','POST',{},201) as {id:string};
  const ci=await web('/api/checklists/'+cl.id+'/items','POST',{name:'Assigned checklist item',assigneeId:'recovery-user'},201) as {id:string;assignee:{id:string}};

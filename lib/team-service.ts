@@ -103,7 +103,7 @@ export async function loadActor(db: D1Database, req: Request): Promise<Actor | n
     const policies = accessRows[5].results as {resourceType:string;resourceId:string}[];
     const safeUser = { id: user!.id, email: user!.email, name: user!.name, color: user!.color, avatarUrl: user!.avatarUrl };
     const clientId = req.headers.get("x-sav3-client") ?? "";
-    return { permissionRevision:digest(JSON.stringify({role,scopeAll,grants,policies,fields:accessRows[6].results})), tokenScope, clientId: /^[a-f0-9-]{36}$/i.test(clientId) ? clientId : undefined, user: safeUser, role, workspaceId: WORKSPACE, kind, sessionId, access: new Access(role, scopeAll, resources, grants, policies.map(p => `${p.resourceType}:${p.resourceId}`)) };
+    return { permissionRevision:digest(JSON.stringify({role,scopeAll,grants,policies,profile:safeUser,fields:accessRows[6].results})), tokenScope, clientId: /^[a-f0-9-]{36}$/i.test(clientId) ? clientId : undefined, user: safeUser, role, workspaceId: WORKSPACE, kind, sessionId, access: new Access(role, scopeAll, resources, grants, policies.map(p => `${p.resourceType}:${p.resourceId}`)) };
 }
 async function audit(db: D1Database, a: Actor, action: string, target: string) { await db.prepare('INSERT INTO AccessAudit (id,actorId,action,targetId,createdAt) VALUES (?,?,?,?,?)').bind(randomUUID(), a.user.id, action, target, Date.now()).run(); }
 export async function throttle(db: D1Database, key: string, limit = 12) {
@@ -114,6 +114,7 @@ export async function throttle(db: D1Database, key: string, limit = 12) {
     if ((row?.count ?? 100) > limit)
         throw new AccessError(429, "Demasiados intentos. Volvé a probar en 15 minutos.");
 }
+const nameSchema = z.string().trim().min(1, "Ingresá nombre y apellido.").max(80);
 const passwordSchema = z.string().min(12, "La contraseña debe tener al menos 12 caracteres.").max(128);
 const grantSchema = z.object({ resourceType: z.enum(["SPACE", "LIST", "TASK", "DASHBOARD"]), resourceId: z.string().min(1), level: z.enum(["NONE", "VIEW", "COMMENT", "EDIT"]) });
 const accessSchema = z.object({ role: z.enum(["ADMIN", "MEMBER", "GUEST"]), scopeAll: z.boolean(), grants: z.array(grantSchema).max(200) });
@@ -255,7 +256,7 @@ export async function teamRoute(req: Request, db: D1Database, a: Actor | null, m
             return Response.json({password},{headers:{'Cache-Control':'private, no-store'}});
         }
         if (path === '/api/team/invitations' && req.method === 'POST') {
-            const data = validate(accessSchema.extend({ email: z.string().trim().email().max(254) }), body);
+            const data = validate(accessSchema.extend({ email: z.string().trim().email().max(254), name:nameSchema.optional() }), body);
             validateAccess(a, data);
             const email = data.email.toLowerCase();
             const existing = await db.prepare('SELECT u.id,coalesce(a.enabled,0) enabled,m.role FROM User u LEFT JOIN AccountAccess a ON a.userId=u.id LEFT JOIN WorkspaceMember m ON m.userId=u.id AND m.workspaceId=? WHERE lower(u.email)=?').bind(WORKSPACE, email).first<{
@@ -268,6 +269,12 @@ export async function teamRoute(req: Request, db: D1Database, a: Actor | null, m
             const uid = existing?.id ?? randomUUID(), id = randomUUID(), raw = token(), expiresAt = Date.now() + 7 * 86400000;
             await db.batch([
                 db.prepare('INSERT OR IGNORE INTO User (id,email,name,color) VALUES (?,?,?,?)').bind(uid, email, email, await nextUserColor(db)),
+                ...(data.name ? [db.prepare('UPDATE User SET name=? WHERE id=?').bind(data.name,uid)] : []),
+                db.prepare('INSERT INTO WorkspaceMember(id,workspaceId,userId,role) VALUES(?,?,?,?) ON CONFLICT(workspaceId,userId) DO UPDATE SET role=excluded.role').bind(randomUUID(),WORKSPACE,uid,data.role),
+                db.prepare('INSERT INTO AccountAccess(userId,enabled,scopeAll) VALUES(?,0,?) ON CONFLICT(userId) DO UPDATE SET enabled=0,scopeAll=excluded.scopeAll').bind(uid,data.scopeAll?1:0),
+                db.prepare('DELETE FROM ResourceGrant WHERE userId=?').bind(uid),
+                ...data.grants.map(g=>db.prepare('INSERT INTO ResourceGrant(userId,resourceType,resourceId,level) VALUES(?,?,?,?)').bind(uid,g.resourceType,g.resourceId,g.level)),
+                db.prepare('DELETE FROM Session WHERE userId=?').bind(uid),
                 db.prepare('UPDATE Invitation SET revoked=1 WHERE userId=? AND accepted IS NULL').bind(uid),
                 db.prepare('INSERT INTO Invitation (id,tokenHash,userId,email,role,scopeAll,grants,expiresAt,createdAt,createdBy) VALUES (?,?,?,?,?,?,?,?,?,?)').bind(id, digest(raw), uid, email, data.role, data.scopeAll ? 1 : 0, JSON.stringify(data.grants), expiresAt, Date.now(), a.user.id)
             ]);
@@ -289,23 +296,57 @@ export async function teamRoute(req: Request, db: D1Database, a: Actor | null, m
             await audit(db, a, 'invitation.revoke', id);
             return Response.json({ ok: true });
         }
+        if (path === '/api/team/users' && req.method === 'POST') {
+            const data=validate(accessSchema.extend({email:z.string().trim().email().max(254),name:nameSchema}).strict(),body);
+            validateAccess(a,data);
+            const email=data.email.toLowerCase();
+            if(await db.prepare('SELECT id FROM User WHERE lower(email)=?').bind(email).first())
+                throw new AccessError(409,'Esta persona ya figura en Usuarios. Editá su registro para conservar sus asignaciones.');
+            const id=randomUUID();
+            await db.batch([
+                db.prepare('INSERT INTO User(id,email,name,color) VALUES(?,?,?,?)').bind(id,email,data.name,await nextUserColor(db)),
+                db.prepare('INSERT INTO WorkspaceMember(id,workspaceId,userId,role) VALUES(?,?,?,?)').bind(randomUUID(),WORKSPACE,id,data.role),
+                db.prepare('INSERT INTO AccountAccess(userId,enabled,scopeAll) VALUES(?,0,?)').bind(id,data.scopeAll?1:0),
+                ...data.grants.map(g=>db.prepare('INSERT INTO ResourceGrant(userId,resourceType,resourceId,level) VALUES(?,?,?,?)').bind(id,g.resourceType,g.resourceId,g.level)),
+                db.prepare('INSERT INTO AccessAudit(id,actorId,action,targetId,createdAt) VALUES(?,?,?,?,?)').bind(randomUUID(),a.user.id,'user.create.inactive',id,Date.now()),
+            ]);
+            return Response.json({id},{status:201});
+        }
         if (path === '/api/team/users' && req.method === 'PATCH') {
-            const data = validate(accessSchema.extend({ userId: z.string(), enabled: z.boolean() }), body);
-            validateAccess(a, data);
-            const target = await db.prepare('SELECT role FROM WorkspaceMember WHERE userId=? AND workspaceId=?').bind(data.userId, WORKSPACE).first<{
-                role: string;
-            }>();
-            if (!target)
-                throw new AccessError(400, "Invitá a esta persona para darle acceso.");
-            if (target.role === 'OWNER' || (target.role === 'ADMIN' && a.role !== 'OWNER') || data.userId === a.user.id)
-                throw new AccessError(403, "No podés modificar esta cuenta.");
-            const writes = [db.prepare('UPDATE WorkspaceMember SET role=? WHERE userId=? AND workspaceId=?').bind(data.role, data.userId, WORKSPACE), db.prepare('UPDATE AccountAccess SET enabled=?,scopeAll=? WHERE userId=?').bind(data.enabled ? 1 : 0, data.scopeAll ? 1 : 0, data.userId), db.prepare('DELETE FROM ResourceGrant WHERE userId=?').bind(data.userId), db.prepare('UPDATE Invitation SET revoked=1 WHERE userId=? AND accepted IS NULL').bind(data.userId)];
-            if(!data.enabled)writes.push(db.prepare('DELETE FROM Session WHERE userId=?').bind(data.userId));
-            for (const g of data.grants)
-                writes.push(db.prepare('INSERT INTO ResourceGrant (userId,resourceType,resourceId,level) VALUES (?,?,?,?)').bind(data.userId, g.resourceType, g.resourceId, g.level));
-            await db.batch(writes);
-            await audit(db, a, 'user.access', data.userId);
-            return Response.json({ ok: true });
+            const data=validate(accessSchema.partial().extend({userId:z.string().min(1),name:nameSchema.optional(),enabled:z.boolean().optional()}).strict(),body);
+            if(Object.keys(data).length===1)throw new AccessError(400,'No hay cambios para guardar.');
+            const target=await db.prepare('SELECT u.id,u.name,m.role,coalesce(x.enabled,0) enabled,coalesce(x.scopeAll,0) scopeAll FROM User u LEFT JOIN WorkspaceMember m ON m.userId=u.id AND m.workspaceId=? LEFT JOIN AccountAccess x ON x.userId=u.id WHERE u.id=?').bind(WORKSPACE,data.userId).first<{id:string;name:string;role:Role|null;enabled:number;scopeAll:number}>();
+            if(!target)throw new AccessError(404,'Usuario no encontrado.');
+            // Profile updates never touch credentials, pending invitations or permissions.
+            if(target.role==='ADMIN'&&a.role!=='OWNER'&&target.id!==a.user.id)
+                throw new AccessError(403,'Solo el propietario puede modificar otra cuenta administradora.');
+            if(target.role==='OWNER'&&target.id!==a.user.id&&a.role!=='OWNER')
+                throw new AccessError(403,'No podés modificar esta cuenta.');
+            const accessEdit=data.role!==undefined||data.scopeAll!==undefined||data.grants!==undefined||data.enabled!==undefined;
+            const writes:D1PreparedStatement[]=[];
+            if(accessEdit){
+                if(target.role==='OWNER'||target.id===a.user.id)throw new AccessError(403,'No podés modificar los permisos de esta cuenta.');
+                const enabled=data.enabled??!!target.enabled;
+                if(enabled&&!target.enabled)throw new AccessError(400,'Para habilitar el ingreso, enviá una invitación.');
+                const currentGrants=await rows<Grant>(db,'SELECT resourceType,resourceId,level FROM ResourceGrant WHERE userId=?',target.id);
+                const next={role:data.role??(target.role as 'ADMIN'|'MEMBER'|'GUEST'|null)??'MEMBER',scopeAll:data.scopeAll??!!target.scopeAll,grants:data.grants??currentGrants};
+                validateAccess(a,next);
+                const accessChanged=!target.role||next.role!==target.role||next.scopeAll!==!!target.scopeAll||enabled!==!!target.enabled||JSON.stringify([...next.grants].sort((x,y)=>(x.resourceType+x.resourceId).localeCompare(y.resourceType+y.resourceId)))!==JSON.stringify([...currentGrants].sort((x,y)=>(x.resourceType+x.resourceId).localeCompare(y.resourceType+y.resourceId)));
+                if(accessChanged){
+                    writes.push(db.prepare('INSERT INTO WorkspaceMember(id,workspaceId,userId,role) VALUES(?,?,?,?) ON CONFLICT(workspaceId,userId) DO UPDATE SET role=excluded.role').bind(randomUUID(),WORKSPACE,target.id,next.role),
+                        db.prepare('INSERT INTO AccountAccess(userId,enabled,scopeAll) VALUES(?,?,?) ON CONFLICT(userId) DO UPDATE SET enabled=excluded.enabled,scopeAll=excluded.scopeAll').bind(target.id,enabled?1:0,next.scopeAll?1:0),
+                        db.prepare('DELETE FROM ResourceGrant WHERE userId=?').bind(target.id),
+                        db.prepare('UPDATE Invitation SET revoked=1 WHERE userId=? AND accepted IS NULL').bind(target.id));
+                    for(const g of next.grants)writes.push(db.prepare('INSERT INTO ResourceGrant(userId,resourceType,resourceId,level) VALUES(?,?,?,?)').bind(target.id,g.resourceType,g.resourceId,g.level));
+                    if(!enabled)writes.push(db.prepare('DELETE FROM Session WHERE userId=?').bind(target.id));
+                    writes.push(db.prepare('INSERT INTO AccessAudit(id,actorId,action,targetId,createdAt) VALUES(?,?,?,?,?)').bind(randomUUID(),a.user.id,'user.access',target.id,Date.now()));
+                }
+            }
+            if(data.name!==undefined&&data.name!==target.name)writes.push(
+                db.prepare('UPDATE User SET name=? WHERE id=?').bind(data.name,target.id),
+                db.prepare('INSERT INTO AccessAudit(id,actorId,action,targetId,createdAt) VALUES(?,?,?,?,?)').bind(randomUUID(),a.user.id,'user.profile',target.id,Date.now()));
+            if(writes.length)await db.batch(writes);
+            return Response.json({ok:true});
         }
         if (path === '/api/team/policy' && req.method === 'POST') {
             const data = validate(z.object({ resourceType: grantSchema.shape.resourceType, resourceId: z.string(), restricted: z.boolean() }), body);

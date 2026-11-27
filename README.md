@@ -396,3 +396,23 @@ La cookie y la sesión del servidor tienen una ventana renovable de cinco días.
 Una pestaña abierta sin interacción, los sondeos en segundo plano y los clientes API/MCP no renuevan este plazo. El vencimiento del servidor es el control definitivo. Cerrar sesión, deshabilitar la cuenta o restablecer la contraseña siguen invalidando el acceso; no se reactivan sesiones vencidas o revocadas. Una sesión anterior de 12 horas que siga vigente puede adoptar el nuevo plazo con su siguiente señal activa; si ya venció, hay que ingresar otra vez. No cambia la sesión externa del propietario con ChatGPT ni los tokens de integración.
 
 El 18 de noviembre de 2026 el usuario autorizó fusionar el PR #24 y publicar esta versión. Incluye los anchos personales de columnas y las acciones de cards de tareas descritos arriba. Ver [notas de la versión](docs/RELEASE-0.12.7.md) y [ADR 0026](docs/decisions/0026-five-day-idle-sessions.md).
+
+
+### 0.12.8 — Usuarios editables y asignaciones sin acceso (preparada)
+
+En **Configuración → Usuarios**, **Editar usuario** permite cambiar el nombre y
+apellido y el rol global según la jerarquía de permisos. **Agregar sin acceso**
+crea personas disponibles para tareas, subtareas, checklists y asignación masiva
+sin pedirles que ingresen ni enviar emails. También se pueden asignar miembros
+con invitación pendiente. Las referencias importadas se incorporan conservando
+su identidad al guardar desde Editar usuario. Asignación y acceso son separados:
+la cuenta permanece deshabilitada hasta completar una invitación válida.
+
+Editar nombre no altera permisos, enlaces ni sesiones. Cambiar rol no cierra
+sesiones activas; si había una invitación pendiente, un cambio de permisos revoca
+el enlace anterior y exige invitar nuevamente. El propietario sigue siendo el
+único que puede designar administradores; las cuentas protegidas conservan su rol.
+
+Esta versión está **preparada en rama; no desplegada**. Incluye migración de datos
+0013 para invitaciones anteriores aún vigentes. Ver [notas de versión](docs/RELEASE-0.12.8.md)
+y [ADR 0029](docs/decisions/0029-user-profiles-and-inactive-assignment.md).

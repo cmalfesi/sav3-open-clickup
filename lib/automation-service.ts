@@ -34,7 +34,7 @@ export async function runRules(db:D1Database,now=Date.now(),onlyRule?:string){
  const recipients=(await db.prepare('SELECT userId FROM TaskAssignee WHERE taskId=?').bind(t.id).all<{userId:string}>()).results;
  for(const recipient of recipients){const target=await activeServiceActor(db,recipient.userId);if(target?.access.can('TASK',t.id))writes.push(db.prepare(`INSERT OR IGNORE INTO Notification(id,userId,actorId,taskId,type,body,read,createdAt) SELECT ?,?,?,?,'automation',?,0,? WHERE ${guard}`).bind(runId+':'+recipient.userId,recipient.userId,a.user.id,t.id,config.message,new Date(now).toISOString(),runId));}
  }else if(config.action==='assign'){
- if(!config.targetId||!await activeServiceActor(db,config.targetId))throw new AccessError(400,'Responsable deshabilitado.');
+ if(!config.targetId||!await db.prepare('SELECT userId FROM WorkspaceMember WHERE workspaceId=? AND userId=?').bind(a.workspaceId,config.targetId).first())throw new AccessError(400,'El responsable debe pertenecer al equipo.');
  writes.push(db.prepare(`INSERT OR IGNORE INTO TaskAssignee(taskId,userId) SELECT ?,? WHERE ${guard}`).bind(t.id,config.targetId,runId));
  }else{
  const status=await db.prepare('SELECT listId FROM Status WHERE id=?').bind(config.targetId??'').first<{listId:string}>();if(status?.listId!==r.listId)throw new AccessError(400,'Estado destino inválido.');
