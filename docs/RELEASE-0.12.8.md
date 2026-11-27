@@ -1,6 +1,7 @@
 # 0.12.8 — Usuarios editables y asignaciones sin acceso
 
-Estado: preparada en rama para revisión. No publicada en producción.
+Estado: publicación a producción autorizada por el usuario el 27 de noviembre de 2026.
+La versión guardada de Sites registra el resultado del despliegue y su fuente exacta.
 
 ## Uso
 
@@ -33,7 +34,7 @@ el nombre o guardar sin cambios conserva el enlace.
 Migración 0013, solo de datos: incorpora invitaciones antiguas todavía válidas al
 directorio, sin habilitar cuentas ni reemplazar membresías existentes. No elimina
 usuarios/tareas ni modifica contraseñas. No agrega dependencias ni nuevas tablas.
-No ejecutar sobre producción hasta autorizar la publicación de esta versión.
+El usuario autorizó aplicar esta migración al publicar esta versión.
 El código de la rama no implica que los cambios estén activos en el sitio.
 
 ## Validación

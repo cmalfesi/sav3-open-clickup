@@ -1,7 +1,7 @@
 # User profiles and inactive assignment directory
 
-Status: Accepted (2026-11-27). Implementation prepared in 0.12.8; production
-publication requires the user's later authorization.
+Status: Accepted (2026-11-27). Implementation in 0.12.8. The user authorized
+merging PR #25 and publishing this release on 2026-11-27.
 
 User identity, workspace membership, authorization and assignment are separate.
 A user may belong to the team and receive work with AccountAccess.enabled=0.

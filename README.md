@@ -398,7 +398,7 @@ Una pestaña abierta sin interacción, los sondeos en segundo plano y los client
 El 18 de noviembre de 2026 el usuario autorizó fusionar el PR #24 y publicar esta versión. Incluye los anchos personales de columnas y las acciones de cards de tareas descritos arriba. Ver [notas de la versión](docs/RELEASE-0.12.7.md) y [ADR 0026](docs/decisions/0026-five-day-idle-sessions.md).
 
 
-### 0.12.8 — Usuarios editables y asignaciones sin acceso (preparada)
+### 0.12.8 — Usuarios editables y asignaciones sin acceso
 
 En **Configuración → Usuarios**, **Editar usuario** permite cambiar el nombre y
 apellido y el rol global según la jerarquía de permisos. **Agregar sin acceso**
@@ -413,6 +413,7 @@ sesiones activas; si había una invitación pendiente, un cambio de permisos rev
 el enlace anterior y exige invitar nuevamente. El propietario sigue siendo el
 único que puede designar administradores; las cuentas protegidas conservan su rol.
 
-Esta versión está **preparada en rama; no desplegada**. Incluye migración de datos
+El 27 de noviembre de 2026 el usuario autorizó fusionar el PR #25 y publicar
+esta versión. Incluye migración de datos
 0013 para invitaciones anteriores aún vigentes. Ver [notas de versión](docs/RELEASE-0.12.8.md)
 y [ADR 0029](docs/decisions/0029-user-profiles-and-inactive-assignment.md).
