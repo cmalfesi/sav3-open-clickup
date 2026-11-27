@@ -1,6 +1,7 @@
 "use client";
 
 import { Flag } from "lucide-react";
+import {tagAppearance} from "@/lib/tag-appearance";
 import { cn } from "@/lib/utils";
 import { PRIORITY_CONFIG } from "@/lib/constants";
 import { Priority } from "@/lib/enums";
@@ -64,13 +65,14 @@ export function StatusBadge({
   );
 }
 
-export function TagChip({ name, color }: { name: string; color: string }) {
+export function TagChip({ name, color, className, fullName=false }: { name: string; color: string; className?:string; fullName?:boolean }) {
   return (
     <span
-      className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
-      style={{ color, backgroundColor: `${color}22` }}
+      title={name}
+      className={cn("inline-flex h-4 min-w-0 max-w-40 shrink-0 items-center rounded px-1.5 text-[11px] font-medium leading-none whitespace-nowrap",className)}
+      style={tagAppearance(name,color)}
     >
-      {name}
+      <span className={fullName?"min-w-0 break-words py-1 leading-snug whitespace-normal":"min-w-0 truncate"}>{name}</span>
     </span>
   );
 }

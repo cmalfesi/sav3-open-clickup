@@ -38,7 +38,7 @@ import { StatusControl, StatusCircle } from "@/components/menus/status-control";
 import { PriorityControl } from "@/components/menus/priority-control";
 import { AssigneeControl } from "@/components/menus/assignee-control";
 import { DateControl } from "@/components/menus/date-control";
-import { TagChip } from "@/components/ui/primitives";
+import {TaskTagSummary} from "./task-tag-summary";
 import { CustomFieldControl } from "@/components/views/custom-field-control";
 import { openFieldManager } from "@/components/custom-fields/manager";
 import { BulkBar } from "@/components/views/bulk-bar";
@@ -525,11 +525,7 @@ function TaskRow({
             )}
           </span>
 
-          <span className="ml-auto flex max-w-[25%] items-center gap-1.5 overflow-hidden pl-2">
-            {task.tags.slice(0, 3).map((t) => (
-              <TagChip key={t.tagId} name={t.tag.name} color={t.tag.color} />
-            ))}
-          </span>
+          <TaskTagSummary tags={task.tags}/>
         </div>
 
         <div className="py-2" onClick={(e) => e.stopPropagation()}>

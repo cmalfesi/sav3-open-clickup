@@ -45,3 +45,5 @@ that's an ADR.
 - [0013 — Task save and list latency](0013-task-save-and-list-latency.md)
 
 | [0029](0029-user-profiles-and-inactive-assignment.md) | User profiles and inactive assignment directory | Accepted |
+
+| [0030](0030-compact-task-tags.md) | Compact task tags and explicit overflow | Accepted |
