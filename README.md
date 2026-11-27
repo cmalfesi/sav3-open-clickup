@@ -417,3 +417,14 @@ El 27 de noviembre de 2026 el usuario autorizó fusionar el PR #25 y publicar
 esta versión. Incluye migración de datos
 0013 para invitaciones anteriores aún vigentes. Ver [notas de versión](docs/RELEASE-0.12.8.md)
 y [ADR 0029](docs/decisions/0029-user-profiles-and-inactive-assignment.md).
+
+
+### 0.12.9 — Etiquetas compactas
+
+Lista muestra dos etiquetas cortas en una línea y **+N** para las restantes.
+Pasá el mouse para leer un nombre completo o hacé clic para consultar todas;
+Enter abre el listado y Escape lo cierra. Los nombres largos ya no agrandan las
+filas. Los colores específicos se conservan; el gris genérico de las etiquetas
+importadas usa una paleta de presentación estable sin cambiar sus datos.
+Ver [notas de versión](docs/RELEASE-0.12.9.md) y
+[ADR 0030](docs/decisions/0030-compact-task-tags.md).

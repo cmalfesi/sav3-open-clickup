@@ -4,6 +4,7 @@ import { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Check, Plus, Tag as TagIcon } from "lucide-react";
 import { useTags, useCreateTag } from "@/lib/hooks";
+import {tagAppearance} from "@/lib/tag-appearance";
 import { TagChip } from "@/components/ui/primitives";
 
 export function TagControl({
@@ -78,7 +79,7 @@ export function TagControl({
                 onClick={() => toggle(t.id)}
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] hover:bg-cu-hover"
               >
-                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: t.color }} />
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: tagAppearance(t.name,t.color).backgroundColor }} />
                 <span className="flex-1 truncate">{t.name}</span>
                 {selectedIds.has(t.id) && <Check className="h-3.5 w-3.5 text-cu-purple" />}
               </button>
