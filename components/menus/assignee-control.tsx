@@ -75,7 +75,8 @@ export function AssigneeControl({
               className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none hover:bg-cu-hover focus:bg-cu-hover"
             >
               <Avatar user={u} size="md" />
-              <span>{u.name}</span>
+              <span className="min-w-0 break-words">{u.name}</span>
+              {u.loginEnabled===false&&<span className="ml-auto shrink-0 text-[11px] text-cu-text-tertiary">Sin acceso</span>}
               {selected.has(u.id) && <Check className="ml-auto h-4 w-4 text-cu-purple" />}
             </DropdownMenu.Item>
           ))}

@@ -70,7 +70,7 @@ afterAll(async () => {
 const nodes=[{id:"test-space",type:"SPACE" as const},{id:"test-list",type:"LIST" as const,parentId:"test-space",parentType:"SPACE" as const},...Array.from({length:130},(_,i)=>({id:`task-${i}`,type:"TASK" as const,listId:"test-list",parentId:"test-list",parentType:"LIST" as const})),{id:"private-sub",type:"TASK" as const,listId:"test-list",parentId:"task-0",parentType:"TASK" as const}];
 function member(grants:Grant[]):Actor {return {user:{id:"test",name:"Test",email:"test@example.com",color:"#000000",avatarUrl:null},role:"MEMBER",workspaceId:"test-workspace",kind:"local",access:new Access("MEMBER",false,nodes,grants)};}
 describe("large lists on D1", () => {
-  it("persists checklist assignees, requires active task access and supports unassignment",async()=>{
+  it("assigns inactive members for planning, preserves active access checks and supports unassignment",async()=>{
     const db=holder.db!,p=holder.client!;
     await db.batch([
       db.prepare("INSERT INTO User(id,email,name) VALUES('cl-actor','actor@example.test','Actor'),('cl-no-access','none@example.test','No access'),('cl-disabled','disabled@example.test','Disabled')"),
@@ -80,14 +80,21 @@ describe("large lists on D1", () => {
     const a={...member([]),user:{id:'cl-actor',name:'Actor',email:'actor@example.test',color:'#000',avatarUrl:null},role:'OWNER' as const,access:new Access('OWNER',true,nodes,[])};
     await withActor(a,async()=>{
       const cl=await p.checklist.findFirstOrThrow({where:{taskId:'task-0'}});
-      const eligible=await checklistAssignees('task-0');expect(eligible.map(u=>u.id)).toEqual(['relation-user']);
-      for(const id of ['cl-no-access','cl-disabled','missing'])await expect(addChecklistItem(cl.id,{name:'No',assigneeId:id})).rejects.toMatchObject({status:400});
+      const eligible=await checklistAssignees('task-0');expect(eligible.map(u=>u.id)).toEqual(['cl-disabled','relation-user']);expect(eligible.find(u=>u.id==='cl-disabled')?.loginEnabled).toBe(false);
+      for(const id of ['cl-no-access','missing'])await expect(addChecklistItem(cl.id,{name:'No',assigneeId:id})).rejects.toMatchObject({status:400});
+      const inactive=await addChecklistItem(cl.id,{name:'Planning only',assigneeId:'cl-disabled'});expect(inactive.assigneeId).toBe('cl-disabled');expect(await db.prepare("SELECT count(*) n FROM Notification WHERE userId='cl-disabled'").first()).toEqual({n:0});await p.checklistItem.delete({where:{id:inactive.id}});
       const saved=await addChecklistItem(cl.id,{name:'Assigned item',assigneeId:'relation-user'});expect(saved.assignee?.name).toBe('Relation User');
       expect((await getTaskDetail('task-0'))?.checklists.find(c=>c.id===cl.id)?.items[0].assigneeId).toBe('relation-user');
       const completed=await updateChecklistItem(saved.id,{resolved:true});expect(completed.resolved).toBe(true);expect(completed.assigneeId).toBe('relation-user');
       expect((await updateChecklistItem(saved.id,{assigneeId:null})).assignee).toBeNull();
       await expect(withActor(member([{resourceType:'TASK',resourceId:'task-0',level:'VIEW'}]),()=>updateChecklistItem(saved.id,{name:'Denied'}))).rejects.toMatchObject({status:403});
       await p.checklistItem.delete({where:{id:saved.id}});
+    });
+  });
+  it('exposes inactive workspace members to regular teammates without granting task access',async()=>{
+    await withActor(member([{resourceType:'LIST',resourceId:'test-list',level:'EDIT'}]),async()=>{
+      const tree=await getWorkspaceTree();expect(tree?.members.find(m=>m.userId==='cl-disabled')?.user.loginEnabled).toBe(false);
+      expect(tree?.members.find(m=>m.userId==='relation-user')?.user.loginEnabled).toBe(true);
     });
   });
   it("assigns distinct colors to pre-existing users without dropping attachment/checklist data",async()=>{

@@ -4,7 +4,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {useState} from "react";
 import {CustomFieldControl} from "./custom-field-control";
 import { X, Trash2, Flag } from "lucide-react";
-import type { StatusModel, CustomFieldWithOptions } from "@/lib/queries";
+import type { StatusModel, CustomFieldWithOptions, UserLite } from "@/lib/queries";
 import { Priority } from "@/lib/enums";
 import { PRIORITY_ORDER, PRIORITY_CONFIG } from "@/lib/constants";
 import { PriorityFlag } from "@/components/ui/primitives";
@@ -126,7 +126,7 @@ function AssignPicker({
   members,
   onApply,
 }: {
-  members: { id: string; name: string; color: string; avatarUrl: string | null }[];
+  members: UserLite[];
   onApply: (ids: string[]) => void;
 }) {
   return (
@@ -140,7 +140,7 @@ function AssignPicker({
           onSelect={() => onApply([u.id])}
           className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none hover:bg-cu-hover focus:bg-cu-hover"
         >
-          <Avatar user={u} size="sm" /> {u.name}
+          <Avatar user={u} size="sm" /> {u.name}{u.loginEnabled===false&&<span className="ml-auto text-[11px] text-cu-text-tertiary">Sin acceso</span>}
         </DropdownMenu.Item>
       ))}
       <div className="my-1 h-px bg-cu-border" />

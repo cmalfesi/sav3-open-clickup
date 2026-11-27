@@ -28,3 +28,6 @@ The common API status covers JSON mutations; React Query covers multipart task/p
 Isolated D1 tests cover assignment persistence, eligibility, invalid/disabled users, unassignment, read-only rejection, and existing user color migration. Delayed-promise tests cover duplicate in-flight creates, independent edits, failure status, optimistic checklist rows/rollback, and absence of task/list refetch. The compiled Worker smoke covers actual route serialization, assignment notifications, anonymous/guest denial, nested child trash and parent deletion after a child was already trashed.
 
 Managed preview currently serves HTML without CSS/client JavaScript. Browser interaction, keyboard, touch, mobile and visual validation of the changed task controls remain pending; do not claim they were performed. Production is unchanged until the requested deployment notice/review.
+
+
+Update 0.12.8: [ADR 0029](0029-user-profiles-and-inactive-assignment.md) supersedes the active-only checklist eligibility rule. Inactive workspace members can receive planning assignments without login, ACL or notifications. Active recipients still need task visibility.

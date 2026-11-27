@@ -41,7 +41,7 @@ export function visibleTask<T extends {subtasks: {id:string}[];_count:{subtasks:
   return {...task,subtasks:task.subtasks.filter(t=>a.access.can("TASK",t.id)),_count:{...task._count,subtasks:task.subtasks.filter(t=>a.access.can("TASK",t.id)).length}};
 }
 export type SubtaskWithRelations = TaskWithRelations["subtasks"][number];
-export type UserLite = Prisma.UserGetPayload<{ select: typeof userSelect }>;
+export type UserLite = Prisma.UserGetPayload<{ select: typeof userSelect }> & {loginEnabled?:boolean};
 
 // ----------------------------------------------------------------------------
 // Workspace tree (for sidebar)
@@ -77,12 +77,10 @@ export async function getWorkspaceTree() {
   const a = actor();
   const visibleList = (l: (typeof workspace.spaces)[number]["lists"][number]) => { l._count.tasks = a.access.resources("TASK").filter(t=>t.listId===l.id&&a.access.can("TASK",t.id)).length; return a.access.visibleList(l.id); };
   workspace.spaces = workspace.spaces.map(s=>({...s,lists:s.lists.filter(visibleList),folders:s.folders.map(f=>({...f,lists:f.lists.filter(visibleList)})).filter(f=>f.lists.length>0)})).filter(s=>a.access.can("SPACE",s.id)||s.lists.length>0||s.folders.length>0);
-  if (!a.access.admin) {
-    const enabled=await getD1().prepare('SELECT userId FROM AccountAccess WHERE enabled=1').all<{userId:string}>();
-    const ids=new Set(enabled.results.map(u=>u.userId));
-    workspace.members=workspace.members.filter(m=>m.userId===a.user.id||ids.has(m.userId));
-  }
-  return workspace;
+  // Assignment directory includes workspace members without granting them login or resource access.
+  const enabled=await getD1().prepare('SELECT userId FROM AccountAccess WHERE enabled=1').all<{userId:string}>();
+  const ids=new Set(enabled.results.map(u=>u.userId));
+  return {...workspace,members:workspace.members.map(m=>({...m,user:{...m.user,loginEnabled:ids.has(m.userId)}}))};
 }
 
 export type WorkspaceTree = NonNullable<Awaited<ReturnType<typeof getWorkspaceTree>>>;

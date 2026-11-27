@@ -42,7 +42,7 @@ export function LiveAccessMonitor({revision}:{revision?:string}){
      await qc.invalidateQueries({queryKey:['bootstrap']});
      window.dispatchEvent(new Event('sav3-access-changed'));
      pending.current=true;
-     toast.info(hasDrafts()?'Tus permisos cambiaron. El contenido se actualizará cuando termines tus borradores.':'Tus permisos se actualizaron. Tu sesión sigue abierta.');
+     toast.info(hasDrafts()?'Tu cuenta se actualizó. El contenido se actualizará cuando termines tus borradores.':'Tu cuenta se actualizó. Tu sesión sigue abierta.');
     }
     if(pending.current&&!hasDrafts()&&!qc.isMutating()){pending.current=false;await qc.invalidateQueries();}
    }catch{/* Offline is not logout. The server still validates each write. */}
